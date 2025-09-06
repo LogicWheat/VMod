@@ -219,9 +219,7 @@ object GIFReader {
                 ((it and -16777216)) // it's 0xff000000, java is stupid
     }
 
-    @JvmStatic fun readGifToTexturesFaster(originalStream: InputStream): MutableList<NativeTextureWithData> {
-        val bytes = originalStream.readAllBytes()
-
+    @JvmStatic fun readGifToTexturesFaster(bytes: ByteArray): MutableList<NativeTextureWithData> {
         var stream = WrappedByteArrayInputStream(bytes)
         reader.reset()
         reader.setInput(stream)

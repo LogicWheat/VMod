@@ -7,8 +7,7 @@ import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.packs.resources.ResourceManager
 import net.spaceeye.vmod.MOD_ID
 import net.spaceeye.vmod.utils.Vector3d
-import java.io.InputStream
-import kotlin.concurrent.thread
+import java.util.concurrent.CompletableFuture
 
 class AnimatedGIFTexture(val gif: GIFTexture): AutoCloseable {
     var currentFrame: Int = 0
@@ -17,7 +16,7 @@ class AnimatedGIFTexture(val gif: GIFTexture): AutoCloseable {
     //https://usage.imagemagick.org/anim_basics/
     //if frame was advanced, then true
     fun advanceTime(delta: Float): Boolean {
-        if (!gif.loaded) return false
+        if (!gif.loadedSuccessfully.isDone || !gif.loadedSuccessfully.get()) return false
 
         time += delta / 10f
         val delay = gif.sprites[currentFrame / gif.framesPerSprite].delays[currentFrame % gif.framesPerSprite]
@@ -57,11 +56,10 @@ class GIFTexture(): AbstractTexture() {
     var totalFrames = 0
     var framesPerSprite = 0
 
-    var loaded = false
+    val loadedSuccessfully = CompletableFuture<Boolean>()
 
-    //TODO rework to have a worker, and it will give job to worker on a single thread
-    fun loadFromStream(stream: InputStream) = thread {
-        val textures = GIFReader.readGifToTexturesFaster(stream)
+    fun loadFromBytes(bytes: ByteArray) {
+        val textures = GIFReader.readGifToTexturesFaster(bytes)
         for (texture in textures) {
             sprites.add(SlidingFrameTexture(texture))
             totalFrames += texture.numFrames
@@ -70,18 +68,14 @@ class GIFTexture(): AbstractTexture() {
         height = textures[0].frameHeight
         framesPerSprite = sprites[0].numFrames
 
-        loaded = true
+        loadedSuccessfully.complete(true)
     }
 
     override fun load(resourceManager: ResourceManager) {}
 
     override fun close() {
-        //TODO stupid
-        if (!loaded) {
-            thread {
-                while (!loaded) {
-                    Thread.sleep(1000)
-                }
+        if (!loadedSuccessfully.isDone) {
+            loadedSuccessfully.thenAccept {
                 sprites.forEach { it.close() }
             }
             return
@@ -90,22 +84,39 @@ class GIFTexture(): AbstractTexture() {
     }
 
     fun blit(pose: PoseStack, frameNum: Int, x: Int, y: Int, uWidth: Int, vHeight: Int) {
-        if (!loaded) { return tempBlit(pose, x, y, uWidth, vHeight) }
+        if (!loadedSuccessfully.isDone) {
+            RenderSystem.setShaderTexture(0, tempTextureLocation)
+            return tempBlit(pose, x, y, uWidth, vHeight)
+        }
+        if (!loadedSuccessfully.get()) {
+            RenderSystem.setShaderTexture(0, dummyLocation)
+            return tempBlit(pose, x, y, uWidth, vHeight)
+        }
+
         sprites[frameNum / framesPerSprite].blit(pose, frameNum, x, y, uWidth, vHeight)
     }
 
     fun draw(pose: PoseStack, frameNum: Int, lu: Vector3d, ld: Vector3d, rd: Vector3d, ru: Vector3d) {
-        if (!loaded) { return tempDraw(pose, lu, ld, rd, ru) }
+        if (!loadedSuccessfully.isDone) {
+            RenderSystem.setShaderTexture(0, tempTextureLocation)
+            return tempDraw(pose, lu, ld, rd, ru)
+        }
+        if (!loadedSuccessfully.get()) {
+            RenderSystem.setShaderTexture(0, dummyLocation)
+            return tempDraw(pose, lu, ld, rd, ru)
+        }
+
         sprites[frameNum / framesPerSprite].draw(pose, frameNum, lu, ld, rd, ru)
     }
 
     fun animated(): AnimatedGIFTexture = AnimatedGIFTexture(this)
 
     companion object {
+        //will cause missing texture
+        private val dummyLocation = ResourceLocation(MOD_ID, "missing")
         private val tempTextureLocation = ResourceLocation(MOD_ID, "textures/misc/loading.png")
 
         private fun tempBlit(pose: PoseStack, x: Int, y: Int, uWidth: Int, vHeight: Int) {
-            RenderSystem.setShaderTexture(0, tempTextureLocation)
             SlidingFrameTexture.innerDraw(
                 pose,
                 Vector3d(x,          y,           0),
@@ -117,7 +128,6 @@ class GIFTexture(): AbstractTexture() {
         }
 
         private fun tempDraw(pose: PoseStack, lu: Vector3d, ld: Vector3d, rd: Vector3d, ru: Vector3d) {
-            RenderSystem.setShaderTexture(0, tempTextureLocation)
             SlidingFrameTexture.innerDraw(pose, lu, ld, rd, ru, 0f, 1f, 0f, 1f)
         }
     }

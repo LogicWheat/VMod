@@ -79,7 +79,7 @@ open class A2BRendererAnimated(): BaseRenderer(), ReflectableObject {
     override fun renderData(poseStack: PoseStack, camera: Camera, timestamp: Long) = with(data) {
         val level = Minecraft.getInstance().level!!
 
-        val gifRef = gifRef ?: let { gifRef = GIFManager.getTextureFromLocation(texture); gifRef!! }
+        val (_, gif) = gifRef ?: let { gifRef = GIFManager.getTextureFromLocation(texture); gifRef!! }
 
         val ship1 = if (shipId1 != -1L) { level.shipObjectWorld.loadedShips.getById(shipId1) ?: return } else null
         val ship2 = if (shipId2 != -1L) { level.shipObjectWorld.loadedShips.getById(shipId2) ?: return } else null
@@ -110,8 +110,8 @@ open class A2BRendererAnimated(): BaseRenderer(), ReflectableObject {
         val rd = -up * width + pos2
         val ru =  up * width + pos2
 
-        gifRef.gif.advanceTime(Minecraft.getInstance().frameTime * 50)
-        gifRef.gif.draw(poseStack, lu, ld, rd, ru)
+        gif.advanceTime(Minecraft.getInstance().frameTime * 50)
+        gif.draw(poseStack, lu, ld, rd, ru)
     }
 
     override fun copy(oldToNew: Map<ShipId, Ship>, centerPositions: Map<ShipId, Pair<Vector3d, Vector3d>>): BaseRenderer? = with(data) {

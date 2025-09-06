@@ -12,17 +12,18 @@ import vazkii.patchouli.client.book.page.abstr.PageWithText
 class PageGIF: PageWithText() {
     var title: String? = null
     var border = false
-    //TODO it seems like this is loaded at the book creation, which is not great
-    val gifRef = GIFManager.getTextureFromLocation(ResourceLocation(MOD_ID, "textures/gif/test_gif2.gif"))
+    @Transient private var gifRef: GIFManager.TextureReference? = null
 
     override fun getTextHeight(): Int = 120
 
     override fun onDisplayed(parent: GuiBookEntry?, left: Int, top: Int) {
         super.onDisplayed(parent, left, top)
-        gifRef.gif.reset()
+        gifRef?.gif?.reset()
     }
 
     override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, pticks: Float) {
+        val (_, gif) = gifRef ?: let { gifRef = GIFManager.getTextureFromLocation(ResourceLocation(MOD_ID, "textures/gif/test_gif2.gif")); gifRef!! }
+
         var x = GuiBook.PAGE_WIDTH / 2 - 53
         var y = 7
 
@@ -32,8 +33,8 @@ class PageGIF: PageWithText() {
 
         //ptick = delta / ms_per_tick
         //ms_per_tick = 50
-        gifRef.gif.advanceTime(pticks * 50)
-        gifRef.gif.blit(graphics.pose(), x*2+6, y*2+6, 200, 200)
+        gif.advanceTime(pticks * 50)
+        gif.blit(graphics.pose(), x*2+6, y*2+6, 200, 200)
 
         graphics.pose().scale(2f, 2f, 2f)
 
