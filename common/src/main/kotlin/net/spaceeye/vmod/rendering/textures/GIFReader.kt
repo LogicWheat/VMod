@@ -238,23 +238,13 @@ object GIFReader {
         fastReader.resetStreamSettingsWithoutMetadata()
         stream.seek(imgStartPos)
 
-        var width = -1
-        var height = -1
-
         val metadata = fastReader.streamMetadata!!
-        if (metadata != null) {
-            val globalRoot = metadata.getAsTree(metadata.getNativeMetadataFormatName()) as IIOMetadataNode
+        val width = metadata.logicalScreenWidth
+        val height = metadata.logicalScreenHeight
 
-            val globalScreenDescriptor = globalRoot.getElementsByTagName("LogicalScreenDescriptor")
-
-            if (globalScreenDescriptor != null && globalScreenDescriptor.length > 0) {
-                val screenDescriptor = globalScreenDescriptor.item(0) as IIOMetadataNode?
-
-                if (screenDescriptor != null) {
-                    width = screenDescriptor.getAttribute("logicalScreenWidth").toInt()
-                    height = screenDescriptor.getAttribute("logicalScreenHeight").toInt()
-                }
-            }
+        //TODO
+        if (width == -1 || height == -1) {
+            throw RuntimeException("Cannot read texture as width or height are not defined in stream metadata")
         }
 
         val textureBuilder = NativeTextureBuilder(width, height, width, GLMaxTextureSize)
@@ -280,7 +270,7 @@ object GIFReader {
 
             val prevTexture = textures[max(frameIndex-1, 0) / framesPerTexture]
             val prevInTexturePos = (frameIndex-1) % framesPerTexture
-            val prevInFrameStart = max(prevInTexturePos * width * height, 0)
+            val prevInFrameStart = prevInTexturePos * width * height
 
             val image = fastReader.readNext(width, height, inFrameStart * 4, texture.buffer, prevInFrameStart * 4, prevTexture.buffer)
 
@@ -295,7 +285,6 @@ object GIFReader {
                 frameIndex++
                 continue
             }
-
 
             var x = 0
             var y = 0

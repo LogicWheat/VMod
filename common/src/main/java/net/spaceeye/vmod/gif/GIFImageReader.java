@@ -25,6 +25,8 @@
 
 package net.spaceeye.vmod.gif;
 
+import kotlin.NotImplementedError;
+import net.spaceeye.vmod.utils.UnsafeGetter;
 import org.lwjgl.system.MemoryUtil;
 import sun.misc.Unsafe;
 
@@ -35,7 +37,6 @@ import java.awt.image.DataBuffer;
 import java.awt.image.WritableRaster;
 import java.io.EOFException;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
@@ -46,7 +47,6 @@ import javax.imageio.IIOException;
 import javax.imageio.ImageReader;
 import javax.imageio.ImageReadParam;
 import javax.imageio.ImageTypeSpecifier;
-import javax.imageio.metadata.IIOMetadata;
 import javax.imageio.spi.ImageReaderSpi;
 import javax.imageio.stream.ImageInputStream;
 
@@ -129,14 +129,10 @@ public class GIFImageReader extends ImageReader {
     static final int[] interlaceIncrement = { 8, 8, 4, 2, -1 };
     static final int[] interlaceOffset = { 0, 4, 2, 1, -1 };
 
-    final Unsafe unsafe;
+    private final Unsafe unsafe = UnsafeGetter.getUnsafe();
 
     public GIFImageReader(ImageReaderSpi originatingProvider) throws NoSuchFieldException, IllegalAccessException {
         super(originatingProvider);
-
-        Field f =Unsafe.class.getDeclaredField("theUnsafe");
-        f.setAccessible(true);
-        unsafe = (Unsafe) f.get(null);
     }
 
     // Take input from an ImageInputStream
@@ -156,9 +152,7 @@ public class GIFImageReader extends ImageReader {
         }
 
         // Clear all values based on the previous stream contents
-        // TODO
-        resetStreamSettingsWithoutMetadata();
-//        resetStreamSettings();
+        resetStreamSettings();
     }
 
     @Override
@@ -359,7 +353,7 @@ public class GIFImageReader extends ImageReader {
     }
 
     @Override
-    public IIOMetadata getStreamMetadata() throws IIOException {
+    public GIFStreamMetadata getStreamMetadata() throws IIOException {
         readHeader();
         return streamMetadata;
     }
@@ -478,7 +472,6 @@ public class GIFImageReader extends ImageReader {
     }
 
     private void outputPixels(byte[] string, int len) {
-        //TODO remove?
         if (imageMetadata.interlaceFlag && (interlacePass < 0 || interlacePass > 3)) {
             return;
         }
@@ -492,7 +485,6 @@ public class GIFImageReader extends ImageReader {
             ++streamX;
             if (streamX != width) {continue;}
             ++rowsDone;
-            // TODO i'm not sure that this can ever not happen
             if (decodeThisRow) {
                 // Clip against ImageReadParam
                 int width = Math.min(sourceRegion.width, destinationRegion.width);
@@ -816,172 +808,8 @@ public class GIFImageReader extends ImageReader {
         return offset + len;
     }
 
-    //TODO remove
     @Override
-    public BufferedImage read(int imageIndex, ImageReadParam param) throws IIOException {
-        if (stream == null) {
-            throw new IllegalStateException("Input not set!");
-        }
-        checkIndex(imageIndex);
-
-        int index = locateImage(imageIndex);
-        if (index != imageIndex) {
-            throw new IndexOutOfBoundsException("imageIndex out of bounds!");
-        }
-
-        readMetadata();
-
-        // A null ImageReadParam means we use the default
-        if (param == null) {
-            param = getDefaultReadParam();
-        }
-
-        // Initialize the destination image
-        Iterator<ImageTypeSpecifier> imageTypes = getImageTypes(imageIndex);
-        this.theImage = getDestination(param, imageTypes, imageMetadata.imageWidth, imageMetadata.imageHeight);
-        this.theTile = theImage.getWritableTile(0, 0);
-        this.width = imageMetadata.imageWidth;
-        this.height = imageMetadata.imageHeight;
-        this.streamX = 0;
-        this.streamY = 0;
-        this.rowsDone = 0;
-        this.interlacePass = 0;
-
-        // Get source region, taking subsampling offsets into account,
-        // and clipping against the true source bounds
-
-        this.sourceRegion = new Rectangle(0, 0, 0, 0);
-        this.destinationRegion = new Rectangle(0, 0, 0, 0);
-        computeRegions(param, width, height, theImage, sourceRegion, destinationRegion);
-        this.destinationOffset = new Point(destinationRegion.x, destinationRegion.y);
-
-        this.destY = destinationRegion.y + streamY - sourceRegion.y;
-        computeDecodeThisRow();
-
-        clearAbortRequest();
-        // Inform IIOReadProgressListeners of start of image
-        processImageStarted(imageIndex);
-        if (abortRequested()) {
-            processReadAborted();
-            return theImage;
-        }
-
-        this.rowBuf = new byte[width];
-
-        try {
-            // Read and decode the image data, fill in theImage
-            this.initCodeSize = stream.readUnsignedByte();
-            // GIF allows max 8 bpp, so anything larger is bogus for the roots.
-            if (this.initCodeSize < 1 || this.initCodeSize > 8) {
-                throw new IIOException("Bad code size:" + this.initCodeSize);
-            }
-
-            // Read first data block
-            this.blockLength = stream.readUnsignedByte();
-            int left = blockLength;
-            int off = 0;
-            while (left > 0) {
-                int nbytes = stream.read(block, off, left);
-                if (nbytes == -1) {
-                    throw new IIOException("Invalid block length for LZW encoded image data");
-                }
-                left -= nbytes;
-                off += nbytes;
-            }
-
-            this.bitPos = 0;
-            this.nextByte = 0;
-            this.lastBlockFound = false;
-            this.interlacePass = 0;
-
-            // Init 32-bit buffer
-            initNext32Bits();
-
-            this.clearCode = 1 << initCodeSize;
-            this.eofCode = clearCode + 1;
-
-            final int NULL_CODE = -1;
-            int code, oldCode = NULL_CODE;
-
-            int[] prefix = new int[4096];
-            byte[] suffix = new byte[4096];
-            byte[] initial = new byte[4096];
-            int[] length = new int[4096];
-            byte[] string = new byte[4096];
-
-            initializeStringTable(prefix, suffix, initial, length);
-            int tableIndex = (1 << initCodeSize) + 2;
-            int codeSize = initCodeSize + 1;
-            int codeMask = (1 << codeSize) - 1;
-
-            do {
-                code = getCode(codeSize, codeMask);
-
-                if (code == clearCode) {
-                    initializeStringTable(prefix, suffix, initial, length);
-                    tableIndex = (1 << initCodeSize) + 2;
-                    codeSize = initCodeSize + 1;
-                    codeMask = (1 << codeSize) - 1;
-
-                    code = getCode(codeSize, codeMask);
-                    oldCode = NULL_CODE;
-                    if (code == eofCode) {
-                        // Inform IIOReadProgressListeners of end of image
-                        processImageComplete();
-                        return theImage;
-                    }
-                } else if (code == eofCode) {
-                    // Inform IIOReadProgressListeners of end of image
-                    processImageComplete();
-                    return theImage;
-                } else {
-                    int newSuffixIndex;
-                    if (code < tableIndex) {
-                        newSuffixIndex = code;
-                    } else { // code == tableIndex
-                        newSuffixIndex = oldCode;
-                        if (code != tableIndex) {
-                            // warning - code out of sequence
-                            // possibly data corruption
-                            processWarningOccurred("Out-of-sequence code!");
-                        }
-                    }
-
-                    if (NULL_CODE != oldCode && tableIndex < 4096) {
-                        int ti = tableIndex;
-                        int oc = oldCode;
-
-                        prefix[ti] = oc;
-                        suffix[ti] = initial[newSuffixIndex];
-                        initial[ti] = initial[oc];
-                        length[ti] = length[oc] + 1;
-
-                        ++tableIndex;
-                        if ((tableIndex == (1 << codeSize)) && (tableIndex < 4096)) {
-                            ++codeSize;
-                            codeMask = (1 << codeSize) - 1;
-                        }
-                    }
-                }
-
-                // Reverse code
-                int c = code;
-                int len = length[c];
-                for (int i = len - 1; i >= 0; i--) {
-                    string[i] = suffix[c];
-                    c = prefix[c];
-                }
-
-                outputPixels(string, len);
-                oldCode = code;
-            } while (!abortRequested());
-
-            processReadAborted();
-            return theImage;
-        } catch (IOException e) {
-            throw new IIOException("I/O error reading image!", e);
-        }
-    }
+    public BufferedImage read(int imageIndex, ImageReadParam param) {throw new NotImplementedError("Use GIFImageReader.readNext");}
 
     int currentIndex = 0;
 
@@ -993,9 +821,18 @@ public class GIFImageReader extends ImageReader {
 
     ImageReadParam defaultReadParam = getDefaultReadParam();
 
-
-    //TODO
-    // 1) if img width & height are same as texture and disposal is doNotDispose, then do not create img object and write directly to texture buffer
+    /**
+     * Before using, read stream metadata.
+     * <p>
+     *  After calling this you can access frame metadata.
+     * @param frameWidth Max width
+     * @param frameHeight Max height
+     * @param bufferFrameStartPos Start byte position of first frame
+     * @param textureBuffer Native buffer to which current frame should be written (MemoryUtil.memByteBuffer)
+     * @param prevBufferFrameStartPos Start byte position of previous frame, if none exist then put negative number
+     * @param prevTextureBuffer Native buffer from which previous frame was written (may be same as textureBuffer)
+     * @return If it couldn't write to textureBuffer, then it will return BufferedImage instance.
+     */
     @Nullable
     public BufferedImage readNext(int frameWidth, int frameHeight,
                                   int bufferFrameStartPos, ByteBuffer textureBuffer,
@@ -1013,9 +850,7 @@ public class GIFImageReader extends ImageReader {
         this.height = imageMetadata.imageHeight;
         int disposal = imageMetadata.disposalMethod;
 
-        //TODO write frames not only equal to frame width or height
-        if (//width == frameWidth && height == frameHeight &&
-                (disposal <= 1) && !imageMetadata.interlaceFlag) {
+        if ((disposal <= 1) && !imageMetadata.interlaceFlag) {
             directBufferWrite(bufferFrameStartPos, textureBuffer, prevBufferFrameStartPos, prevTextureBuffer, imageIndex, frameWidth, frameHeight);
             return null;
         }
@@ -1156,14 +991,10 @@ public class GIFImageReader extends ImageReader {
         final var colorTable = getColorTable(imageIndex);
         final var transparentColorIdx = Math.min(imageMetadata.transparentColorIndex * 3, colorTable.length - 1);
         final byte opaque = -1;
-        final byte transparent = 0;
 
-        final var startX = x;
         final var endX = x + width;
-        final var startY = y;
         final var endY = y + height;
 
-        boolean canDecode = false;
         boolean doDecode = true;
 
         readFrameDataAndInit();
@@ -1184,16 +1015,14 @@ public class GIFImageReader extends ImageReader {
         long prevBufferOffset = MemoryUtil.memAddress(prevTextureBuffer) + prevBufferFrameStartPos;
 
         final boolean hasAlpha;
-        if (prevBufferFrameStartPos <= 0) {
+        if (prevBufferFrameStartPos < 0) {
             hasAlpha = false;
         } else {
             hasAlpha = imageMetadata.transparentColorFlag;
         }
 
-        int colorIndex;
-
         do {
-            canDecode = doDecode && streamY >= startY && streamY < endY && streamX >= startX && streamX < endX;
+            boolean canDecode = doDecode && streamY >= y && streamY < endY && streamX >= x && streamX < endX;
 
             if (canDecode && bufferPos >= bufferLen) {
                 code = getCode(codeSize, codeMask);
@@ -1241,20 +1070,18 @@ public class GIFImageReader extends ImageReader {
 
                 if (doDecode) {
                     // Reverse code
-                    int c = code;
-                    final int len = length[c];
-                    for (int i = len - 1; i >= 0; i--) {
-                        string[i] = suffix[c];
-                        c = prefix[c];
-                    }
-                    bufferLen = len;
-                    bufferPos = 0;
                     oldCode = code;
+                    bufferLen = length[code];
+                    bufferPos = 0;
+                    for (int i = bufferLen - 1; i >= 0; i--) {
+                        string[i] = suffix[code];
+                        code = prefix[code];
+                    }
                 }
             }
 
             if (canDecode) {
-                colorIndex = Byte.toUnsignedInt(string[bufferPos++]) * 3;
+                int colorIndex = Byte.toUnsignedInt(string[bufferPos++]) * 3;
 
                 if (hasAlpha && transparentColorIdx == colorIndex) {
                     unsafe.putByte(bufferOffset++, unsafe.getByte(prevBufferOffset++));
@@ -1279,8 +1106,11 @@ public class GIFImageReader extends ImageReader {
             if (streamX >= frameWidth) {
                 streamX = 0;
                 streamY++;
+                if (streamY >= frameHeight) {
+                    break;
+                }
             }
-        } while (streamY < frameHeight);
+        } while (true);
 
     } catch (IOException e) {
         throw new IIOException("I/O error reading image!", e);
