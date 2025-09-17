@@ -1,8 +1,9 @@
 package net.spaceeye.vmod.rendering.textures
 
 import com.mojang.blaze3d.platform.NativeImage
-import net.spaceeye.vmod.GIFUtils
 import net.spaceeye.vmod.GLMaxTextureSize
+import net.spaceeye.vmod.gif.GIFImageReader
+import net.spaceeye.vmod.gif.GIFImageReaderSpi
 import net.spaceeye.vmod.mixin.NativeImageInvoker
 import org.lwjgl.system.MemoryUtil
 import java.awt.Color
@@ -13,6 +14,7 @@ import java.nio.ByteBuffer
 import javax.imageio.ImageIO
 import javax.imageio.metadata.IIOMetadataNode
 import javax.imageio.stream.ImageInputStreamImpl
+import kotlin.math.max
 
 class WrappedByteArrayInputStream(val array: ByteArray): ImageInputStreamImpl() {
     override fun read(): Int {
@@ -145,7 +147,7 @@ object GIFReader {
         var image: NativeImage,
         var buffer: ByteBuffer,
         var ptr: Long,
-        var delays: MutableList<Int>,
+        var delays: IntArray,
         var frameWidth: Int,
         var frameHeight: Int,
         var spriteWidth: Int,
@@ -199,7 +201,7 @@ object GIFReader {
 
             return NativeTextureWithData(
                 img, buf, ptr,
-                mutableListOf(),
+                IntArray(requiredFrames),
                 frameWidth,
                 frameHeight,
                 spriteWidth,
@@ -211,30 +213,35 @@ object GIFReader {
         }
     }
 
-    @JvmStatic inline fun argb2rgba(it: Int): Int {
-        return 0 or
-                ((it and 0x00ff0000) shr 2*8) or
-                ((it and 0x0000ff00)) or
-                ((it and 0x000000ff) shl 2*8) or
-                ((it and -16777216)) // it's 0xff000000, java is stupid
+    @JvmStatic fun abgr2rgba(it: Int): Int {
+                                                  //   a b g r       a r g b
+        return  ((it and -16777216 ))  or         // 0xff000000 -> 0xff000000
+                ((it and 0x00ff0000) ushr 2*8) or // 0x000000ff -> 0x00ff0000
+                ((it and 0x0000ff00))  or         // 0x0000ff00 -> 0x0000ff00
+                ((it and 0x000000ff)  shl 2*8)    // 0x00ff0000 -> 0x000000ff
     }
 
-    @JvmStatic fun readGifToTexturesFaster(bytes: ByteArray): MutableList<NativeTextureWithData> {
+    val fastReader = GIFImageReader(GIFImageReaderSpi())
+
+    /**
+     * Not thread safe as it uses global reader instance (creating reader is surprisingly slow)
+     */
+    fun readGifToTexturesFaster(bytes: ByteArray): MutableList<NativeTextureWithData> {
         var stream = WrappedByteArrayInputStream(bytes)
-        reader.reset()
-        reader.setInput(stream)
+        fastReader.reset()
+        fastReader.setInput(stream)
 
-        reader.streamMetadata
-        val numFrames = GIFUtils.getNumImages(stream)
+        fastReader.streamMetadata
+        val imgStartPos = stream.streamPosition
+        val numFrames = fastReader.getNumImages(true)
 
-        reader.reset()
-        stream = WrappedByteArrayInputStream(bytes)
-        reader.setInput(stream)
+        fastReader.resetStreamSettingsWithoutMetadata()
+        stream.seek(imgStartPos)
 
         var width = -1
         var height = -1
 
-        val metadata = reader.streamMetadata
+        val metadata = fastReader.streamMetadata!!
         if (metadata != null) {
             val globalRoot = metadata.getAsTree(metadata.getNativeMetadataFormatName()) as IIOMetadataNode
 
@@ -261,17 +268,34 @@ object GIFReader {
         var frameIndex = 0
         var remainingFrames = numFrames
         while (true) {
-            val image = try { reader.read(frameIndex) } catch (_: IndexOutOfBoundsException) { break }
+            if (frameIndex == numFrames) {break}
+            val texture = textures.getOrNull(frameIndex / framesPerTexture) ?: run {
+                val texture = textureBuilder.makeEmpty(remainingFrames)
+                textures.add(texture)
+                remainingFrames -= texture.numFrames
+                texture
+            }
+            val inTexturePos = frameIndex % framesPerTexture
+            val inFrameStart = inTexturePos * width * height
 
-            if (width == -1 || height == -1) {
-                width = image.width
-                height = image.height
+            val prevTexture = textures[max(frameIndex-1, 0) / framesPerTexture]
+            val prevInTexturePos = (frameIndex-1) % framesPerTexture
+            val prevInFrameStart = max(prevInTexturePos * width * height, 0)
+
+            val image = fastReader.readNext(width, height, inFrameStart * 4, texture.buffer, prevInFrameStart * 4, prevTexture.buffer)
+
+            val metadata = fastReader.getImageMetadata(frameIndex)
+            val delay = metadata.delayTime
+            val disposal = metadata.disposalMethodString
+
+            texture.delays[inTexturePos] = delay
+
+            if (image == null) {
+                disposals.add(disposal)
+                frameIndex++
+                continue
             }
 
-            val root = reader.getImageMetadata(frameIndex).getAsTree("javax_imageio_gif_image_1.0") as IIOMetadataNode
-            val gce = root.getElementsByTagName("GraphicControlExtension").item(0) as IIOMetadataNode
-            val delay = gce.getAttribute("delayTime").toInt()
-            val disposal = gce.getAttribute("disposalMethod")
 
             var x = 0
             var y = 0
@@ -281,33 +305,34 @@ object GIFReader {
                 masterGraphics = master.createGraphics()
                 masterGraphics.background = Color(0, 0, 0, 0)
             } else {
-                val children = root.childNodes
-                for (nodeIndex in 0 until children.length) {
-                    val nodeItem = children.item(nodeIndex)
-                    if (nodeItem.nodeName == "ImageDescriptor") {
-                        val map = nodeItem.attributes
-                        x = map.getNamedItem("imageLeftPosition").nodeValue.toInt()
-                        y = map.getNamedItem("imageTopPosition").nodeValue.toInt()
-                    }
+                x = metadata.imageLeftPosition
+                y = metadata.imageTopPosition
+            }
+
+            if (frameIndex != 0) {
+                val inTexturePos = (frameIndex - 1) % framesPerTexture
+                val inFrameStart = inTexturePos * width * height
+
+                val src = textures[(frameIndex - 1) / framesPerTexture].buffer
+                val pixel = intArrayOf(0, 0, 0, 0)
+                var rgba: Int
+                // inefficient, but do i care?
+                for (i in 0 until width * height) {
+                    rgba = src.getInt((inFrameStart + i) * 4)
+                    pixel[0] = rgba and 0x000000ff
+                    pixel[1] = rgba and 0x0000ff00 ushr 1*8
+                    pixel[2] = rgba and 0x00ff0000 ushr 2*8
+                    pixel[3] = rgba and -16777216  ushr 3*8
+                    master.raster.setPixel(i % width, i / width, pixel)
                 }
             }
+
             masterGraphics!!.drawImage(image, x, y, null)
-
-            val texture = textures.getOrNull(frameIndex / framesPerTexture) ?: run {
-                val texture = textureBuilder.makeEmpty(remainingFrames)
-                textures.add(texture)
-                remainingFrames -= texture.numFrames
-                texture
-            }
-            texture.delays.add(delay)
-
-            val inTexturePos = frameIndex % framesPerTexture
-            val inFrameStart = inTexturePos * width * height
 
             val src = master.data.dataBuffer
             val dst = texture.buffer
             for (i in 0 until width * height) {
-                dst.putInt((inFrameStart + i) * 4, argb2rgba(src.getElem(i)))
+                dst.putInt((inFrameStart + i) * 4, abgr2rgba(src.getElem(i)))
             }
 
             if (disposal == "restoreToPrevious") {
@@ -324,14 +349,13 @@ object GIFReader {
 
                 val src = textures[from / framesPerTexture].buffer
                 val pixel = intArrayOf(0, 0, 0, 0)
-                var argb: Int
+                var rgba: Int
                 for (i in 0 until width * height) {
-                    argb = src.getInt((inFrameStart + i) * 4)
-                    pixel[0] = argb and 0x000000ff         // a
-                    pixel[3] = argb and -16777216  shr 3*8 // r
-                    pixel[2] = argb and 0x00ff0000 shr 2*8 // g
-                    pixel[1] = argb and 0x0000ff00 shr 1*8 // b
-
+                    rgba = src.getInt((inFrameStart + i) * 4)
+                    pixel[0] = rgba and 0x000000ff
+                    pixel[1] = rgba and 0x0000ff00 ushr 1*8
+                    pixel[2] = rgba and 0x00ff0000 ushr 2*8
+                    pixel[3] = rgba and -16777216  ushr 3*8
                     master.raster.setPixel(i % width, i / width, pixel)
                 }
             } else if (disposal == "restoreToBackgroundColor") {

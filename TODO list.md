@@ -8,6 +8,8 @@
 * Mode to disable collisions for certain blocks (will need to mixin into shipAABB cuz blocks without collisions don't contribute to) (set type to type of air)
 * Think of smth to use blockless ships that have collision (set type to smth that is not air)
 
+* Redo GIFTexture
+
 # Do Eventually
 
 * Add a way for addons to add their own client/server settings

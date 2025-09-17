@@ -1,5 +1,6 @@
 package net.spaceeye.vmod
 
+import com.fasterxml.jackson.databind.util.ByteBufferBackedInputStream
 import com.google.common.primitives.Ints.min
 import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.arguments.ArgumentType
@@ -9,15 +10,21 @@ import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.builder.RequiredArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
+import dev.architectury.platform.Platform
+import io.netty.buffer.Unpooled
+import net.minecraft.client.Minecraft
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.arguments.DimensionArgument
 import net.minecraft.commands.arguments.EntityArgument
 import net.minecraft.commands.arguments.coordinates.Vec3Argument
 import net.minecraft.network.chat.Component
+import net.minecraft.resources.ResourceLocation
 import net.spaceeye.valkyrien_ship_schematics.interfaces.v1.IShipSchematicDataV1
 import net.spaceeye.vmod.limits.ServerLimits
 import net.spaceeye.vmod.mixin.ShipObjectWorldAccessor
 import net.spaceeye.vmod.rendering.RenderingData
+import net.spaceeye.vmod.rendering.textures.GIFReader
+import net.spaceeye.vmod.rendering.textures.WrappedByteArrayInputStream
 import net.spaceeye.vmod.rendering.types.debug.DebugRenderer
 import net.spaceeye.vmod.schematic.placeAt
 import net.spaceeye.vmod.shipAttachments.CustomMassSave
@@ -29,15 +36,18 @@ import net.spaceeye.vmod.toolgun.PlayerAccessManager
 import net.spaceeye.vmod.toolgun.ServerToolGunState
 import net.spaceeye.vmod.toolgun.modes.state.PlayerSchematics
 import net.spaceeye.vmod.utils.Vector3d
+import net.spaceeye.vmod.utils.getNow_ms
 import net.spaceeye.vmod.utils.vs.teleportShipWithConnected
 import net.spaceeye.vmod.utils.vs.traverseGetAllTouchingShips
 import net.spaceeye.vmod.utils.vs.traverseGetConnectedShips
 import net.spaceeye.vmod.vsStuff.VSGravityManager
 import org.joml.Quaterniond
+import org.lwjgl.system.MemoryUtil
 import org.valkyrienskies.core.api.ships.LoadedServerShip
 import org.valkyrienskies.core.api.ships.ServerShip
 import org.valkyrienskies.core.api.ships.Ship
 import org.valkyrienskies.core.api.ships.properties.ShipId
+import org.valkyrienskies.core.impl.shadow.by
 import org.valkyrienskies.mod.common.command.RelativeVector3Argument
 import org.valkyrienskies.mod.common.command.ShipArgument
 import org.valkyrienskies.mod.common.command.shipWorld
@@ -47,6 +57,7 @@ import org.valkyrienskies.mod.common.util.toJOML
 import org.valkyrienskies.mod.mixinducks.feature.command.VSCommandSource
 import java.nio.file.Paths
 import java.util.UUID
+import kotlin.concurrent.thread
 import kotlin.math.max
 
 typealias VSCS = CommandContext<VSCommandSource>
@@ -342,6 +353,54 @@ object VMCommands {
             }
             return 0
         }
+
+        fun testGIFLoader(cc: CommandContext<CommandSourceStack>): Int {
+            val bytes = Minecraft.getInstance().resourceManager.getResourceOrThrow(ResourceLocation(MOD_ID, "textures/gif/test_gif2.gif")).open().readAllBytes()
+            thread(isDaemon = true, priority = Thread.MAX_PRIORITY) {
+                val numRounds = 25
+                val ignoreFirstN = 5
+
+                var totalTime = 0L
+                var numFrames = 0
+                var numPixels = 0L
+                for (i in 0 until numRounds) {
+                    ELOG("Started loading round ${i+1} out of $numRounds")
+                    val start = getNow_ms()
+                    val textures = GIFReader.readGifToTexturesFaster(bytes)
+                    val stop = getNow_ms()
+                    ELOG("Stopped loading")
+
+                    textures.forEach { it.image.close() }
+
+                    if (i < ignoreFirstN) continue
+
+                    totalTime += stop - start
+                    numFrames += textures.fold(0) { acc, it -> acc + it.numFrames }
+                    numPixels += textures.fold(0) { acc, it -> acc + it.spriteWidth * it.spriteHeight }
+                }
+
+//                for (i in 0 until numRounds) {
+//                    ELOG("Started loading round ${i+1} out of $numRounds")
+//                    val start = getNow_ms()
+//                    val textures = GIFReader.readGIF(ByteBufferBackedInputStream(Unpooled.wrappedBuffer(bytes).nioBuffer()))
+//                    val stop = getNow_ms()
+//                    ELOG("Stopped loading")
+//
+//                    if (i < ignoreFirstN) continue
+//
+//                    totalTime += stop - start
+//
+//                    numFrames += textures.size
+//                    numPixels += textures.size * textures[0].image.width * textures[0].image.height
+//                }
+
+                ELOG("\nFrames per second: ${numFrames.toFloat() / totalTime * 1000}" +
+                     "\nms per frame: ${totalTime.toFloat() / numFrames}" +
+                     "\nPixels per second: ${(numPixels.toFloat() / totalTime * 1000).toInt()}" +
+                     "\nProcessed frames: $numFrames")
+            }
+            return 0
+        }
     }
 
     fun registerServerCommands(dispatcher: CommandDispatcher<CommandSourceStack>) {
@@ -476,15 +535,26 @@ object VMCommands {
                 ).then(
                     lt("delete-phys-entities").executes { OP.deletePhysEntities(it) }
                 )
-            ).then(
-                lt("debug")
-                .requires { it.hasPermission(4) }
-                .then(
-                    lt("remove-debug-renderers").executes {
-                        DEBUG.clearDebugRenderers(it)
-                    }
+            ).also {
+                if (!Platform.isDevelopmentEnvironment()) return@also
+                it.then(
+                    lt("debug")
+                        .then(
+                            lt("remove-debug-renderers").executes {
+                                DEBUG.clearDebugRenderers(it)
+                            }
+                        ).then(
+                            lt("test-gif-loader").executes {
+                                DEBUG.testGIFLoader(it)
+                            }
+                        ).then(
+                            lt("call-gc").executes {
+                                System.gc()
+                                0
+                            }
+                        )
                 )
-            )
+            }
         )
     }
 }

@@ -49,6 +49,9 @@ class AnimatedGIFTexture(val gif: GIFTexture): AutoCloseable {
     }
 }
 
+//TODO Current impl is pretty wasteful and needs to be redone
+// 1) GIFTexture shouldn't load long gifs completely, instead it should do double buffering (although i'm not sure how feasible it with current GIFReader)
+// 2) I should probably figure out how to use Texture Array instead of current atlas approach
 class GIFTexture(): AbstractTexture() {
     var sprites = mutableListOf<SlidingFrameTexture>()
     var width = 0

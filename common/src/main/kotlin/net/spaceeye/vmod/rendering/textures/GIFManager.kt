@@ -5,6 +5,7 @@ import net.minecraft.resources.ResourceLocation
 import net.spaceeye.valkyrien_ship_schematics.ELOG
 import net.spaceeye.vmod.OnFinalize
 import net.spaceeye.vmod.utils.MPair
+import net.spaceeye.vmod.utils.getNow_ms
 import java.io.FileNotFoundException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.LinkedBlockingQueue
@@ -12,8 +13,9 @@ import kotlin.concurrent.thread
 
 object GIFManager {
     private val toLoad = LinkedBlockingQueue<Pair<ResourceLocation, GIFTexture>>()
+    private val toUnload = LinkedBlockingQueue<Pair<String, Long>>()
     init {
-        thread(isDaemon = true, name = "VMod GIF Textures loader") {
+        thread(isDaemon = true, name = "VMod GIF Textures loader", priority = Thread.MAX_PRIORITY) {
             while (true) {
                 val (location, texture) = toLoad.take()
 
@@ -34,13 +36,48 @@ object GIFManager {
                 }
             }
         }
+
+        //TODO i don't like it
+        thread(isDaemon = true, name = "VMod GIF Textures unloader") {
+            val temp = ArrayDeque<Pair<String, Long>>()
+            val timeUnused = 1000L
+            while (true) {
+                Thread.sleep(1000L)
+                temp.add(toUnload.take()) //will await until toUnload is not empty
+                toUnload.drainTo(temp) //will drain the rest
+                synchronized(storage) {
+                    val now = getNow_ms()
+                    temp.forEach {
+                        val (usages, texture) = storage[it.first] ?: return@forEach
+                        if (usages != 0) { return@forEach }
+                        if (now - it.second < timeUnused) {
+                            toUnload.add(it)
+                            return@forEach
+                        }
+                        storage.remove(it.first)
+                        texture.close()
+                    }
+                }
+                temp.clear()
+            }
+        }
     }
 
     /**
      * On being collected by GC will decrease ref counter of texture. Uses finalize which is probably not great but whatever
      */
-    data class TextureReference(val id: String, var gif: AnimatedGIFTexture, private val wasFinalized: () -> Unit): OnFinalize() {
-        override fun onFinalize() = wasFinalized()
+    data class TextureReference(val id: String, var gif: AnimatedGIFTexture, private val wasFinalized: () -> Unit): OnFinalize(), AutoCloseable {
+        private var closed = false
+        override fun onFinalize() {
+            if (!closed) wasFinalized()
+            closed = true
+        }
+
+        override fun close() {
+            if (closed) return
+            closed = true
+            wasFinalized()
+        }
     }
 
     private val storage = ConcurrentHashMap<String, MPair<Int, GIFTexture>>()
@@ -51,8 +88,7 @@ object GIFManager {
         return TextureReference(id, pair.second.animated()) {
             pair.first--
             if (pair.first <= 0) {
-                pair.second.close()
-                storage.remove(id)
+                toUnload.add(Pair(id, getNow_ms()))
             }
         }
     }

@@ -1,6 +1,7 @@
 package net.spaceeye.vmod.toolgun.modes.state
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
 import net.spaceeye.vmod.MOD_ID
@@ -16,6 +17,7 @@ import net.spaceeye.vmod.toolgun.modes.gui.ConnectionGUI
 import net.spaceeye.vmod.toolgun.modes.hud.ConnectionHUD
 import net.spaceeye.vmod.reflectable.ByteSerializableItem.get
 import net.spaceeye.vmod.rendering.RenderingUtils
+import net.spaceeye.vmod.rendering.types.A2BRendererAnimated
 import net.spaceeye.vmod.toolgun.gui.Presettable
 import net.spaceeye.vmod.toolgun.gui.Presettable.Companion.presettable
 import net.spaceeye.vmod.toolgun.modes.*

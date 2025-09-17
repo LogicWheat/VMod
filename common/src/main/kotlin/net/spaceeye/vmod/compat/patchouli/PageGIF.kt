@@ -12,6 +12,8 @@ import vazkii.patchouli.client.book.page.abstr.PageWithText
 class PageGIF: PageWithText() {
     var title: String? = null
     var border = false
+    //TODO this is a bad idea, as Page doesn't get unallocated, maybe instead have a certain time before texture can be closed and just constantly call getTextureFromLocation?
+    // also save time itself?
     @Transient private var gifRef: GIFManager.TextureReference? = null
 
     override fun getTextHeight(): Int = 120
