@@ -88,7 +88,7 @@ fun IShipSchematicDataV1.placeAt(
             ELOG(e.stackTraceToString())
         }
 
-        createdShips.zip(newTransforms).forEach { (it, transform) ->
+        for ((it, transform) in createdShips.zip(newTransforms)) {
             //TODO add ?: to nonfatal errors
             val b = it.shipAABB ?: AABBi(0, 0, 0, 0, 0, 0)
             var offset = MVector3d(it.transform.positionInModel) - MVector3d(
@@ -96,7 +96,9 @@ fun IShipSchematicDataV1.placeAt(
                 (b.maxY() - b.minY()) / 2.0 + b.minY(),
                 (b.maxZ() - b.minZ()) / 2.0 + b.minZ(),
             )
+
             offset = transformDirectionShipToWorld(transform, offset)
+            // target position + rotated (contraption center - ship world pos) + (COM position - logical center)
             val toPos = MVector3d(pos) + MVector3d(transform.position) + offset
             level.shipObjectWorld.teleportShip(it, ShipTeleportDataImpl(
                 toPos.toJomlVector3d(),
@@ -214,11 +216,13 @@ private fun IShipSchematic.createShipConstructors(level: ServerLevel, rotation: 
     val shipData = info!!.shipsInfo
 
     return shipData.map { Pair({
-        val newRot = it.rotation.mul(rotation, Quaterniond())
+        val newRot = rotation.mul(it.rotation, Quaterniond())
         val newTransform = ShipTransformImpl(
-            newRot.transform(it.relPositionToCenter.get(Vector3d())),
+            rotation.transform(it.relPositionToCenter.get(Vector3d())),
             it.previousCenterPosition,
-            newRot, JVector3d(it.shipScale, it.shipScale, it.shipScale))
+            newRot,
+            JVector3d(it.shipScale, it.shipScale, it.shipScale)
+        )
 
         newTransforms.add(newTransform)
 
@@ -228,7 +232,7 @@ private fun IShipSchematic.createShipConstructors(level: ServerLevel, rotation: 
         //TODO ships will touch during assembly and that may activate blocks in them, maybe space them out?
         level.shipObjectWorld.teleportShip(newShip, ShipTeleportDataImpl(
             JVector3d(1000000000.0, 1000000000.0, 1000000000.0),
-            newTransform.rotation,
+            newRot,
             newScale = it.shipScale
         ))
         newShip

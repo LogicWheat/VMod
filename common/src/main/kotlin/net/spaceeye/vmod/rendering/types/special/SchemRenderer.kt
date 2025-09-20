@@ -377,7 +377,7 @@ class SchematicRenderer(val schem: IShipSchematic, val transparency: Float, val 
                 }
             }
             matrixIndex++
-            poseStack.last().pose().also { poseStack.popPose() }
+            poseStack.last().pose().get(Matrix4f()).also { poseStack.popPose() }
         }
     }
 
@@ -404,7 +404,7 @@ class SchematicRenderer(val schem: IShipSchematic, val transparency: Float, val 
                 infoItem.relPositionToCenter.y,
                 infoItem.relPositionToCenter.z,
             )
-            poseStack.mulPose(infoItem.rotation.let { Quaternionf(it.x().toFloat(), it.y().toFloat(), it.z().toFloat(), it.w().toFloat()) })
+            poseStack.mulPose(infoItem.rotation.get(Quaternionf()))
             infoItem.shipScale.toFloat().also {
                 poseStack.scale(it, it, it)
             }
