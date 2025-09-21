@@ -1,3 +1,9 @@
+# 1.7.1
+* Fixed bug with "Open or Close Toolgun GUI" keybind stopping working sometimes
+* Fixed ~~maybe~~ some issues with schematics
+* Fixed bug where ServerLimits reset to default
+* Fixed bug where custom per-ship gravity weren't saving
+
 # 1.7.0
 * "Open or Close Toolgun GUI" keybind is now ignored while writing in the parameter space
 * New config values for schematic control

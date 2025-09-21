@@ -116,6 +116,7 @@ class ThrustersController: ShipForcesInducer {
         return true
     }
 
+    //TODO doesn't actually do anything, everything is loaded by thruster ventities
     private var thrustersDataSave: List<ThrusterDataToSave>
         get() = thrustersData.map { (k, v) -> v.toSave() }
         set(value) {thrustersData = value.associate { Pair(it.id, ThrusterData(it)) }.toMutableMap()}

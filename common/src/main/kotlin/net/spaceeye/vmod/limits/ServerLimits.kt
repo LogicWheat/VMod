@@ -1,7 +1,6 @@
 package net.spaceeye.vmod.limits
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import dev.architectury.event.events.common.LifecycleEvent
 import net.minecraft.network.FriendlyByteBuf
 import net.spaceeye.vmod.ELOG
@@ -46,37 +45,36 @@ data class StrLimit   (var sizeLimit:Int = Int.MAX_VALUE) {
     }
 }
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 open class ServerLimitsInstance: ReflectableObject {
     @JsonIgnore private var i = 0
 
-    val maxForce : FloatLimit by get(i++, FloatLimit())
-    val stiffness: FloatLimit by get(i++, FloatLimit())
-    val damping  : FloatLimit by get(i++, FloatLimit())
+    var maxForce : FloatLimit by get(i++, FloatLimit())
+    var stiffness: FloatLimit by get(i++, FloatLimit())
+    var damping  : FloatLimit by get(i++, FloatLimit())
 
-    val precisePlacementAssistSides: IntLimit by get(i++, IntLimit(2, 11))
-    val extensionDistance: FloatLimit by get(i++, FloatLimit(0.001f))
-    val distanceFromBlock: DoubleLimit by get(i++, DoubleLimit(0.0))
-    val extensionSpeed: FloatLimit by get(i++, FloatLimit(0.001f))
-    val fixedDistance: FloatLimit by get(i++, FloatLimit())
-    val thrusterForce: DoubleLimit by get(i++, DoubleLimit(1.0, 1e100))
+    var precisePlacementAssistSides: IntLimit by get(i++, IntLimit(2, 11))
+    var extensionDistance: FloatLimit by get(i++, FloatLimit(0.001f))
+    var distanceFromBlock: DoubleLimit by get(i++, DoubleLimit(0.0))
+    var extensionSpeed: FloatLimit by get(i++, FloatLimit(0.001f))
+    var fixedDistance: FloatLimit by get(i++, FloatLimit())
+    var thrusterForce: DoubleLimit by get(i++, DoubleLimit(1.0, 1e100))
     var massPerBlock: DoubleLimit by get(i++, DoubleLimit(1.0))
-    val stripRadius: DoubleLimit by get(i++, DoubleLimit(0.0, 10.0))
-    val maxDistance: DoubleLimit by get(i++, DoubleLimit(0.0, 100.0))
-    val gearRatio: FloatLimit by get(i++, FloatLimit(0.001f))
+    var stripRadius: DoubleLimit by get(i++, DoubleLimit(0.0, 10.0))
+    var maxDistance: DoubleLimit by get(i++, DoubleLimit(0.0, 100.0))
+    var gearRatio: FloatLimit by get(i++, FloatLimit(0.001f))
     var massLimit: DoubleLimit by get(i++, DoubleLimit(Double.MIN_VALUE))
-    val scale: DoubleLimit by get(i++, DoubleLimit(0.001))
+    var scale: DoubleLimit by get(i++, DoubleLimit(0.001))
 
-    val physRopeSegments: IntLimit by get(i++, IntLimit(1, 100))
-    val totalMassOfPhysRope: DoubleLimit by get(i++, DoubleLimit(0.01, Double.MAX_VALUE))
-    val physRopeRadius: DoubleLimit by get(i++, DoubleLimit(0.01, 10.0))
-    val physRopeAngleLimit: DoubleLimit by get(i++, DoubleLimit(0.0, 180.0))
-    val physRopeSides: IntLimit by get(i++, IntLimit(2, 10))
+    var physRopeSegments: IntLimit by get(i++, IntLimit(1, 100))
+    var totalMassOfPhysRope: DoubleLimit by get(i++, DoubleLimit(0.01, Double.MAX_VALUE))
+    var physRopeRadius: DoubleLimit by get(i++, DoubleLimit(0.01, 10.0))
+    var physRopeAngleLimit: DoubleLimit by get(i++, DoubleLimit(0.0, 180.0))
+    var physRopeSides: IntLimit by get(i++, IntLimit(2, 10))
 
-    val channelLength: StrLimit by get(i++, StrLimit(50))
+    var channelLength: StrLimit by get(i++, StrLimit(50))
 
-    val thrusterScale: DoubleLimit by get(i++, DoubleLimit(0.001, 10.0))
-    val sensorScale: DoubleLimit by get(i++, DoubleLimit(0.001, 10.0))
+    var thrusterScale: DoubleLimit by get(i++, DoubleLimit(0.001, 10.0))
+    var sensorScale: DoubleLimit by get(i++, DoubleLimit(0.001, 10.0))
 
     fun toPacket() = ServerLimitsPacket(this)
 }
