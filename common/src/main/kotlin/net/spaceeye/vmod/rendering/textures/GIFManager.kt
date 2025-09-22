@@ -4,7 +4,6 @@ import net.minecraft.client.Minecraft
 import net.minecraft.resources.ResourceLocation
 import net.spaceeye.valkyrien_ship_schematics.ELOG
 import net.spaceeye.vmod.OnFinalize
-import net.spaceeye.vmod.utils.MPair
 import net.spaceeye.vmod.utils.getNow_ms
 import java.io.FileNotFoundException
 import java.util.concurrent.ConcurrentHashMap
@@ -48,9 +47,9 @@ object GIFManager {
                 synchronized(storage) {
                     val now = getNow_ms()
                     temp.forEach {
-                        val (usages, texture) = storage[it.first] ?: return@forEach
+                        val (usages, lastUsed, texture) = storage[it.first] ?: return@forEach
                         if (usages != 0) { return@forEach }
-                        if (now - it.second < timeUnused) {
+                        if (now - it.second < timeUnused || now - lastUsed < timeUnused) {
                             toUnload.add(it)
                             return@forEach
                         }
@@ -66,7 +65,7 @@ object GIFManager {
     /**
      * On being collected by GC will decrease ref counter of texture. Uses finalize which is probably not great but whatever
      */
-    data class TextureReference(val id: String, var gif: AnimatedGIFTexture, private val wasFinalized: () -> Unit): OnFinalize(), AutoCloseable {
+    data class WeakReference<T>(val id: String, var it: T, private val wasFinalized: () -> Unit): OnFinalize(), AutoCloseable {
         private var closed = false
         override fun onFinalize() {
             if (!closed) wasFinalized()
@@ -80,14 +79,28 @@ object GIFManager {
         }
     }
 
-    private val storage = ConcurrentHashMap<String, MPair<Int, GIFTexture>>()
+    private data class GIFUnit(var numReferences: Int, var lastTimeUsed: Long, var texture: GIFTexture)
+
+    private val storage = ConcurrentHashMap<String, GIFUnit>()
     private val resourceManager = Minecraft.getInstance().resourceManager
 
-    private fun makeRef(id: String, pair: MPair<Int, GIFTexture>): TextureReference {
-        pair.first++
-        return TextureReference(id, pair.second.animated()) {
-            pair.first--
-            if (pair.first <= 0) {
+    private fun makeRef(id: String, item: GIFUnit): WeakReference<GIFTexture> {
+        item.numReferences++
+        item.lastTimeUsed = getNow_ms()
+        return WeakReference(id, item.texture) {
+            item.numReferences--
+            if (item.numReferences <= 0) {
+                toUnload.add(Pair(id, getNow_ms()))
+            }
+        }
+    }
+
+    private fun makeAnimatedRef(id: String, item: GIFUnit): WeakReference<AnimatedGIFTexture> {
+        item.numReferences++
+        item.lastTimeUsed = getNow_ms()
+        return WeakReference(id, item.texture.animated()) {
+            item.numReferences--
+            if (item.numReferences <= 0) {
                 toUnload.add(Pair(id, getNow_ms()))
             }
         }
@@ -96,11 +109,22 @@ object GIFManager {
     /**
      * SAVE REFERENCE, DO NOT SAVE TEXTURE ITSELF. Will unload location on GC if nothing references it.
      */
-    fun getTextureFromLocation(location: ResourceLocation): TextureReference = synchronized(storage) {
+    fun getTextureFromLocation(location: ResourceLocation): WeakReference<GIFTexture> = synchronized(storage) {
         val strId = location.toString()
         storage[strId]?.also { return makeRef(strId, it) }
 
         val texture = GIFTexture().also { toLoad.add(Pair(location, it)) }
-        return makeRef(strId, MPair(0, texture).also { storage[strId] = it })
+        return makeRef(strId, GIFUnit(0, getNow_ms(), texture).also { storage[strId] = it })
+    }
+
+    /**
+     * SAVE REFERENCE, DO NOT SAVE TEXTURE ITSELF. Will unload location on GC if nothing references it.
+     */
+    fun getAnimatedTextureFromLocation(location: ResourceLocation): WeakReference<AnimatedGIFTexture> = synchronized(storage) {
+        val strId = location.toString()
+        storage[strId]?.also { return makeAnimatedRef(strId, it) }
+
+        val texture = GIFTexture().also { toLoad.add(Pair(location, it)) }
+        return makeAnimatedRef(strId, GIFUnit(0, getNow_ms(), texture).also { storage[strId] = it })
     }
 }

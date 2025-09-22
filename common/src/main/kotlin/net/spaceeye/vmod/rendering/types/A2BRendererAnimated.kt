@@ -13,6 +13,7 @@ import net.spaceeye.vmod.limits.ClientLimits
 import net.spaceeye.vmod.reflectable.AutoSerializable
 import net.spaceeye.vmod.reflectable.ByteSerializableItem.get
 import net.spaceeye.vmod.reflectable.ReflectableObject
+import net.spaceeye.vmod.rendering.textures.AnimatedGIFTexture
 import net.spaceeye.vmod.rendering.textures.GIFManager
 import net.spaceeye.vmod.utils.*
 import net.spaceeye.vmod.utils.vs.posShipToWorldRender
@@ -44,7 +45,7 @@ open class A2BRendererAnimated(): BaseRenderer(), ReflectableObject {
     override fun serialize() = data.serialize()
     override fun deserialize(buf: FriendlyByteBuf) { data.deserialize(buf) }
 
-    var gifRef: GIFManager.TextureReference? = null
+    var gifRef: GIFManager.WeakReference<AnimatedGIFTexture>? = null
 
     constructor(
         shipId1: Long,
@@ -79,7 +80,7 @@ open class A2BRendererAnimated(): BaseRenderer(), ReflectableObject {
     override fun renderData(poseStack: PoseStack, camera: Camera, timestamp: Long) = with(data) {
         val level = Minecraft.getInstance().level!!
 
-        val (_, gif) = gifRef ?: let { gifRef = GIFManager.getTextureFromLocation(texture); gifRef!! }
+        val (_, gif) = gifRef ?: let { gifRef = GIFManager.getAnimatedTextureFromLocation(texture); gifRef!! }
 
         val ship1 = if (shipId1 != -1L) { level.shipObjectWorld.loadedShips.getById(shipId1) ?: return } else null
         val ship2 = if (shipId2 != -1L) { level.shipObjectWorld.loadedShips.getById(shipId2) ?: return } else null
@@ -110,7 +111,7 @@ open class A2BRendererAnimated(): BaseRenderer(), ReflectableObject {
         val rd = -up * width + pos2
         val ru =  up * width + pos2
 
-        gif.advanceTime(Minecraft.getInstance().frameTime * 50)
+        gif.advanceTime(Minecraft.getInstance().deltaFrameTime * 50)
         gif.draw(poseStack, lu, ld, rd, ru)
     }
 

@@ -11,22 +11,35 @@ import java.util.concurrent.CompletableFuture
 
 class AnimatedGIFTexture(val gif: GIFTexture): AutoCloseable {
     var currentFrame: Int = 0
+
+    /**
+     * 1/100th of a second
+     */
     var time = 0f
 
     //https://usage.imagemagick.org/anim_basics/
-    //if frame was advanced, then true
+    /**
+     * @param delta in milliseconds
+     */
     fun advanceTime(delta: Float): Boolean {
         if (!gif.loadedSuccessfully.isDone || !gif.loadedSuccessfully.get()) return false
 
+        // gif uses 1/100 th of a second and not milliseconds
         time += delta / 10f
-        val delay = gif.sprites[currentFrame / gif.framesPerSprite].delays[currentFrame % gif.framesPerSprite]
+        var delay = gif.sprites[currentFrame / gif.framesPerSprite].delays[currentFrame % gif.framesPerSprite]
         if (time <= delay) return false
 
-        time = 0f
+        //if delay is over a second then just reset
+        if (time > 100f) { time = 0f }
 
-        currentFrame++
-        if (currentFrame < gif.totalFrames) return true
-        currentFrame = 0
+        while (true) {
+            time -= delay
+            currentFrame++
+            if (currentFrame >= gif.totalFrames) { currentFrame = 0 }
+
+            delay = gif.sprites[currentFrame / gif.framesPerSprite].delays[currentFrame % gif.framesPerSprite]
+            if (time <= delay) {break}
+        }
 
         return true
     }
