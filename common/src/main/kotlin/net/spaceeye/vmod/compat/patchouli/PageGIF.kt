@@ -4,7 +4,6 @@ import com.mojang.blaze3d.systems.RenderSystem
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.resources.ResourceLocation
-import net.spaceeye.vmod.MOD_ID
 import net.spaceeye.vmod.rendering.textures.GIFManager
 import net.spaceeye.vmod.rendering.textures.GIFTexture
 import vazkii.patchouli.client.book.gui.GuiBook
@@ -14,7 +13,7 @@ import vazkii.patchouli.client.book.page.abstr.PageWithText
 class PageGIF: PageWithText() {
     var title: String? = null
     var border = false
-    var location: ResourceLocation = ResourceLocation(MOD_ID, "textures/gif/test_gif2.gif")
+    var images = ArrayList<ResourceLocation>()
 
     @Transient private var currentFrame: Int = 0
     @Transient private var time: Float = 0f
@@ -51,7 +50,8 @@ class PageGIF: PageWithText() {
 
     override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, pticks: Float) {
         //creates new object each frame but PageWithText doesn't have onClose so i have to do this otherwise i can't free texture after player closes page
-        val ref = GIFManager.getTextureFromLocation(location)
+        if (images.isEmpty()) { return }
+        val ref = GIFManager.getTextureFromLocation(images[0])
 
         var x = GuiBook.PAGE_WIDTH / 2 - 53
         var y = 7

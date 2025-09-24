@@ -62,8 +62,8 @@ processResources {
     }
 
     from(rootProject.file("common/src/main/resources")) {
-        include("data/*/patchouli_books/")
-        include("assets/*/patchouli_books/")
+        include("data/")
+        include("assets/")
     }
 }
 
