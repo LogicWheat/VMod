@@ -1,7 +1,7 @@
 package net.spaceeye.vmod.rendering.textures
 
 import com.mojang.blaze3d.platform.NativeImage
-import net.spaceeye.vmod.GLMaxTextureSize
+import net.spaceeye.vmod.GLMaxArrayTextureLayers
 import net.spaceeye.vmod.gif.GIFImageReader
 import net.spaceeye.vmod.gif.GIFImageReaderSpi
 import net.spaceeye.vmod.mixin.NativeImageInvoker
@@ -247,7 +247,7 @@ object GIFReader {
             throw RuntimeException("Cannot read texture as width or height are not defined in stream metadata")
         }
 
-        val textureBuilder = NativeTextureBuilder(width, height, width, GLMaxTextureSize)
+        val textureBuilder = NativeTextureBuilder(width, height, width, height * GLMaxArrayTextureLayers)
         val textures = mutableListOf<NativeTextureWithData>()
         val (_, _, _, _, framesPerTexture) = textureBuilder.calculateDimensions(numFrames)
 

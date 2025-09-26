@@ -13,52 +13,63 @@ import kotlin.concurrent.thread
 object GIFManager {
     private val toLoad = LinkedBlockingQueue<Pair<ResourceLocation, GIFTexture>>()
     private val toUnload = LinkedBlockingQueue<Pair<String, Long>>()
+    private val processing = ConcurrentHashMap.newKeySet<ResourceLocation>()
     init {
-        thread(isDaemon = true, name = "VMod GIF Textures loader", priority = Thread.MAX_PRIORITY) {
-            while (true) {
-                val (location, texture) = toLoad.take()
+        thread(isDaemon = true, name = "VMod GIF Textures loader", priority = Thread.MAX_PRIORITY, block = ::loadThread)
+        thread(isDaemon = true, name = "VMod GIF Textures unloader", block = ::unloadThread)
+    }
 
-                val bytes = try {
-                    resourceManager.getResourceOrThrow(location).open().readAllBytes()
-                } catch (e: FileNotFoundException) {
-                    ELOG("Failed to load location $location because it doesn't exist")
-                    texture.loadedSuccessfully.complete(false)
-                    continue
-                }
+    //TODO i don't like it
+    @JvmStatic private fun loadThread() {
+        while (true) {
+            val (location, texture) = toLoad.take()
+            if (processing.contains(location) || storage[location.toString()]?.texture?.loadedSuccessfully?.isDone == true) continue
+            processing.add(location)
+            texture.loadedSuccessfully.thenAccept { processing.remove(location) }
 
-                try {
-                    texture.loadFromBytes(bytes)
-                } catch (e: Exception) {
-                    ELOG("Failed to load location $location with exception\n${e.stackTraceToString()}")
-                    texture.loadedSuccessfully.complete(false)
-                    continue
-                }
+            val bytes = try {
+                resourceManager.getResourceOrThrow(location).open().readAllBytes()
+            } catch (e: FileNotFoundException) {
+                ELOG("Failed to load location $location because it doesn't exist")
+                texture.loadedSuccessfully.complete(false)
+                continue
+            }
+
+            try {
+                texture.loadFromBytes(bytes)
+            } catch (e: Exception) {
+                ELOG("Failed to load location $location with exception\n${e.stackTraceToString()}")
+                texture.loadedSuccessfully.complete(false)
             }
         }
+    }
 
-        //TODO i don't like it
-        thread(isDaemon = true, name = "VMod GIF Textures unloader") {
-            val temp = ArrayDeque<Pair<String, Long>>()
-            val timeUnused = 1000L
-            while (true) {
-                Thread.sleep(1000L)
-                temp.add(toUnload.take()) //will await until toUnload is not empty
-                toUnload.drainTo(temp) //will drain the rest
-                synchronized(storage) {
-                    val now = getNow_ms()
-                    temp.forEach {
-                        val (usages, lastUsed, texture) = storage[it.first] ?: return@forEach
-                        if (usages != 0) { return@forEach }
-                        if (now - it.second < timeUnused || now - lastUsed < timeUnused) {
-                            toUnload.add(it)
-                            return@forEach
-                        }
-                        storage.remove(it.first)
-                        texture.close()
+    //for debug purposes
+    private var timeUnused = 1000L
+    private var doUnload = true
+
+    //TODO i don't like it
+    @JvmStatic private fun unloadThread() {
+        val temp = ArrayDeque<Pair<String, Long>>()
+        while (true) {
+            Thread.sleep(1000L)
+            temp.add(toUnload.take()) //will await until toUnload is not empty
+            toUnload.drainTo(temp) //will drain the rest
+            synchronized(storage) {
+                if (!doUnload) return@synchronized
+                val now = getNow_ms()
+                temp.forEach {
+                    val (usages, lastUsed, texture) = storage[it.first] ?: return@forEach
+                    if (usages != 0) { return@forEach }
+                    if (now - it.second < timeUnused || now - lastUsed < timeUnused) {
+                        toUnload.add(it)
+                        return@forEach
                     }
+                    storage.remove(it.first)
+                    texture.close()
                 }
-                temp.clear()
             }
+            temp.clear()
         }
     }
 

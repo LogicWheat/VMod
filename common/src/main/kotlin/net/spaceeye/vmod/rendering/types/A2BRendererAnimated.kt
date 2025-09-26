@@ -104,15 +104,23 @@ open class A2BRendererAnimated(): BaseRenderer(), ReflectableObject {
         // perpendicular direction
         val pdir = (-pos1 - wdir * ((-pos1).dot(wdir) / wdir.dot(wdir))).snormalize()
 
-        val up = pdir.cross(wdir.normalize())
+//        val up = pdir.cross(wdir.normalize())
+
+        val up = Vector3d(0, 1, 0)
 
         val lu =  up * width + pos1
         val ld = -up * width + pos1
         val rd = -up * width + pos2
         val ru =  up * width + pos2
 
+        val wWidth = (ru - lu).dist()
+        val wHeight = (ru - rd).dist()
+
+        val u = if (wWidth > wHeight) { (wWidth / wHeight).toFloat() } else {1f}
+        val v = if (wWidth < wHeight) { (wHeight / wWidth).toFloat() } else {1f}
+
         gif.advanceTime(Minecraft.getInstance().deltaFrameTime * 50)
-        gif.draw(poseStack, lu, ld, rd, ru)
+        gif.draw(poseStack, lu, ld, rd, ru, 0f, u, 0f, v)
     }
 
     override fun copy(oldToNew: Map<ShipId, Ship>, centerPositions: Map<ShipId, Pair<Vector3d, Vector3d>>): BaseRenderer? = with(data) {

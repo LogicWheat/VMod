@@ -42,7 +42,7 @@ import net.spaceeye.vmod.vsStuff.VSGravityManager
 import net.spaceeye.vmod.vsStuff.VSMasslessShipProcessor
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.lwjgl.opengl.GL20
+import org.lwjgl.opengl.GL46
 import org.valkyrienskies.mod.common.shipObjectWorld
 import vazkii.patchouli.client.book.ClientBookRegistry
 
@@ -53,11 +53,11 @@ fun ELOG(s: String) = VM.logger.error(s)
 
 const val MOD_ID = "the_vmod"
 
-var GLMaxTextureSize: Int = -1
+var GLMaxArrayTextureLayers: Int = -1
     get() {
-    if (field != -1) return field
+        if (field != -1) return field
         val arr = IntArray(1)
-        GL20.glGetIntegerv(GL20.GL_MAX_TEXTURE_SIZE, arr)
+        GL46.glGetIntegerv(GL46.GL_MAX_ARRAY_TEXTURE_LAYERS, arr)
         field = arr[0]
         return field
     }
@@ -75,7 +75,9 @@ object VM {
         }
 
         EnvExecutor.runInEnv(Env.CLIENT) { Runnable {
-            RenderSystem.recordRenderCall { GLMaxTextureSize }
+            RenderSystem.recordRenderCall {
+                GLMaxArrayTextureLayers
+            }
         } }
 
         VMAttachments.register()
