@@ -40,9 +40,6 @@
 ## Ticking Constraints
 * Redo them
 
-## HUD Rendering
-* Add info window for like part weight, total weight, connections, etc
-
 ## Sounds
 * Add sounds and shit
 

@@ -17,10 +17,18 @@ import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.arguments.DimensionArgument
 import net.minecraft.commands.arguments.EntityArgument
 import net.minecraft.commands.arguments.coordinates.Vec3Argument
+import net.minecraft.nbt.CompoundTag
+import net.minecraft.nbt.StreamTagVisitor
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.level.ChunkPos
+import net.minecraft.world.level.chunk.ChunkStatus
+import net.minecraft.world.level.chunk.storage.ChunkSerializer
 import net.spaceeye.valkyrien_ship_schematics.interfaces.v1.IShipSchematicDataV1
 import net.spaceeye.vmod.limits.ServerLimits
+import net.spaceeye.vmod.mixin.ChunkStorageAccessor
+import net.spaceeye.vmod.mixin.IOWorkerAccessor
+import net.spaceeye.vmod.mixin.RegionFileStorageAccessor
 import net.spaceeye.vmod.mixin.ShipObjectWorldAccessor
 import net.spaceeye.vmod.rendering.RenderingData
 import net.spaceeye.vmod.rendering.textures.GIFReader
@@ -35,6 +43,7 @@ import net.spaceeye.vmod.shipAttachments.WeightSynchronizer
 import net.spaceeye.vmod.toolgun.PlayerAccessManager
 import net.spaceeye.vmod.toolgun.ServerToolGunState
 import net.spaceeye.vmod.toolgun.modes.state.PlayerSchematics
+import net.spaceeye.vmod.utils.BlockPos
 import net.spaceeye.vmod.utils.Vector3d
 import net.spaceeye.vmod.utils.getNow_ms
 import net.spaceeye.vmod.utils.vs.teleportShipWithConnected
@@ -46,18 +55,28 @@ import org.lwjgl.system.MemoryUtil
 import org.valkyrienskies.core.api.ships.LoadedServerShip
 import org.valkyrienskies.core.api.ships.ServerShip
 import org.valkyrienskies.core.api.ships.Ship
+import org.valkyrienskies.core.api.ships.properties.ChunkClaim
 import org.valkyrienskies.core.api.ships.properties.ShipId
+import org.valkyrienskies.core.apigame.ships.MutableQueryableShipData
+import org.valkyrienskies.core.impl.shadow.bo
 import org.valkyrienskies.core.impl.shadow.by
 import org.valkyrienskies.mod.common.command.RelativeVector3Argument
 import org.valkyrienskies.mod.common.command.ShipArgument
 import org.valkyrienskies.mod.common.command.shipWorld
 import org.valkyrienskies.mod.common.dimensionId
+import org.valkyrienskies.mod.common.getShipManagingPos
+import org.valkyrienskies.mod.common.isChunkInShipyard
 import org.valkyrienskies.mod.common.shipObjectWorld
 import org.valkyrienskies.mod.common.util.toJOML
 import org.valkyrienskies.mod.mixinducks.feature.command.VSCommandSource
+import java.io.File
 import java.nio.file.Paths
 import java.util.UUID
 import kotlin.concurrent.thread
+import kotlin.io.path.Path
+import kotlin.io.path.deleteIfExists
+import kotlin.io.path.listDirectoryEntries
+import kotlin.io.path.name
 import kotlin.math.max
 
 typealias VSCS = CommandContext<VSCommandSource>
@@ -343,6 +362,38 @@ object VMCommands {
 
             return 0
         }
+
+        fun pruneShipyardChunks(cc: CommandContext<CommandSourceStack>): Int { thread(true, true) {
+            val level = cc.source.level
+            val path = (((level.chunkSource.chunkMap as ChunkStorageAccessor).`vmod$getWorker`() as IOWorkerAccessor).`vmod$getStorage`() as RegionFileStorageAccessor).`vmod$getPath`()
+
+            val regionsToCheck = path.listDirectoryEntries()
+                .map { it.fileName.name }
+                .filter { it.startsWith("r.") && it.endsWith(".mca") }
+                .map { it.removePrefix("r.").removeSuffix(".mca") }
+                .mapNotNull { try { it.split(".").map { it.toInt() }.let { Pair(it[0], it[1]) } } catch (_: Exception) {null} }
+                .map { (x, z) -> Pair(ChunkPos.minFromRegion(x, z), ChunkPos.maxFromRegion(x, z)) }
+                .filter { (min, max) -> level.isChunkInShipyard(min.x, min.z) || level.isChunkInShipyard(max.x, max.z) }
+
+            for ((i, bounds) in regionsToCheck.withIndex()) {
+                var allUnused = true
+                for (cPos in ChunkPos.rangeClosed(bounds.first, bounds.second)) {
+                    if (level.getShipManagingPos(cPos) == null) {continue}
+                    allUnused = false
+                    break
+                }
+                if (allUnused) {
+                    val regX = bounds.first.regionX
+                    val regZ = bounds.first.regionZ
+                    val path = path.resolve("r.$regX.${regZ}.mca")
+                    path.deleteIfExists()
+                }
+
+                DLOG("Removed region ${bounds.first.regionX}.${bounds.first.regionZ} ${i+1}/${regionsToCheck.size}")
+            }
+            }
+            return 0
+        }
     }
 
     private object DEBUG {
@@ -530,10 +581,9 @@ object VMCommands {
                             )
                         )
                     )
-                ).then(
-                    lt("clear-vmod-attachments").executes { OP.clearVmodAttachments(it) }
-                ).then(
-                    lt("delete-phys-entities").executes { OP.deletePhysEntities(it) }
+                ).then(lt("clear-vmod-attachments").executes { OP.clearVmodAttachments(it) }
+                ).then(lt("delete-phys-entities").executes { OP.deletePhysEntities(it) }
+                ).then(lt("prune-shipyard-chunks").executes { OP.pruneShipyardChunks(it) }
                 )
             ).also {
                 if (!Platform.isDevelopmentEnvironment()) return@also
