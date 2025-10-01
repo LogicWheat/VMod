@@ -77,6 +77,7 @@ import kotlin.io.path.Path
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.name
+import kotlin.io.path.notExists
 import kotlin.math.max
 
 typealias VSCS = CommandContext<VSCommandSource>
@@ -364,8 +365,10 @@ object VMCommands {
         }
 
         fun pruneShipyardChunks(cc: CommandContext<CommandSourceStack>): Int { thread(true, true) {
-            val level = cc.source.level
+            cc.source.server.allLevels.forEach { level ->
             val path = (((level.chunkSource.chunkMap as ChunkStorageAccessor).`vmod$getWorker`() as IOWorkerAccessor).`vmod$getStorage`() as RegionFileStorageAccessor).`vmod$getPath`()
+
+            if (path.notExists()) return@forEach
 
             val regionsToCheck = path.listDirectoryEntries()
                 .map { it.fileName.name }
@@ -387,11 +390,12 @@ object VMCommands {
                     val regZ = bounds.first.regionZ
                     val path = path.resolve("r.$regX.${regZ}.mca")
                     path.deleteIfExists()
+                    DLOG("Dimension: ${level.dimensionId} | Removed region ${bounds.first.regionX}.${bounds.first.regionZ} | ${i+1}/${regionsToCheck.size}")
+                } else {
+                    DLOG("Dimension: ${level.dimensionId} | Processed ${i+1}/${regionsToCheck.size}")
                 }
-
-                DLOG("Removed region ${bounds.first.regionX}.${bounds.first.regionZ} ${i+1}/${regionsToCheck.size}")
             }
-            }
+            } }
             return 0
         }
     }

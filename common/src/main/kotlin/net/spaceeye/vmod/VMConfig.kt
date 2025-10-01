@@ -39,6 +39,7 @@ object VMConfig {
         val TOOLGUN = ServerToolgunSettings()
         val PERMISSIONS = Permissions()
         val SCHEMATICS = Schematics()
+        val SHIPYARD_PRUNER = ShipyardPruner()
 
         class ServerPhysgunSettings(): ConfigSubDirectory() {
             val GRAB_ALL_CONNECTED_SHIPS: Boolean by CBool(false, "A bit buggy.", false)
@@ -68,6 +69,10 @@ object VMConfig {
 
             var ALLOW_CHUNK_PLACEMENT_INTERRUPTION: Boolean by CBool(true, "Allows ships to be created over several ticks (so that if you have a huge ship it won't freeze server). May be incompatible with some mods though.")
             var ALLOW_CHUNK_UPDATE_INTERRUPTION: Boolean by CBool(true, "Allows ships to be updated over several ticks (so that if you have a huge ship it won't freeze server). May be incompatible with some mods though.")
+        }
+
+        class ShipyardPruner: ConfigSubDirectory() {
+            var CLEAR_SHIP_PLOT_ON_DELETION: Boolean by CBool(true, "Will automatically delete region files of deleted ships")
         }
     }
 }
