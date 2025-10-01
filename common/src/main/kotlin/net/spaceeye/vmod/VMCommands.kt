@@ -341,11 +341,11 @@ object VMCommands {
         fun clearVmodAttachments(cc: CommandContext<CommandSourceStack>): Int {
             val level = cc.source.level
             level.shipObjectWorld.loadedShips.forEach {
-                it.getAttachment(GravityController::class.java)?.let { _ -> it.setAttachment(GravityController::class.java, null) }
-                it.getAttachment(PhysgunController::class.java)?.let { _ -> it.setAttachment(PhysgunController::class.java, null) }
-                it.getAttachment(ThrustersController::class.java)?.let { _ -> it.setAttachment(ThrustersController::class.java, null) }
-                it.getAttachment(CustomMassSave::class.java)?.let { _ -> it.setAttachment(CustomMassSave::class.java, null) }
-                it.getAttachment(WeightSynchronizer::class.java)?.let { _ -> it.setAttachment(WeightSynchronizer::class.java, null) }
+                it.getAttachment(GravityController::class.java)?.let { _ -> it.saveAttachment(GravityController::class.java, null) }
+                it.getAttachment(PhysgunController::class.java)?.let { _ -> it.saveAttachment(PhysgunController::class.java, null) }
+                it.getAttachment(ThrustersController::class.java)?.let { _ -> it.saveAttachment(ThrustersController::class.java, null) }
+                it.getAttachment(CustomMassSave::class.java)?.let { _ -> it.saveAttachment(CustomMassSave::class.java, null) }
+                it.getAttachment(WeightSynchronizer::class.java)?.let { _ -> it.saveAttachment(WeightSynchronizer::class.java, null) }
             }
             return 0
         }
