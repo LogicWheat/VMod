@@ -26,15 +26,16 @@ abstract class SynchronisedDataTransmitter<T: Serializable> (
     val itemWriter: (buf: FriendlyByteBuf, item: Serializable) -> Unit,
     val itemReader: (buf: FriendlyByteBuf) -> Serializable
 ) {
-    private val subscribersSavedChecksums = mutableMapOf<UUID, MutableMap<Long, MutableMap<Int, ByteArray>>>()
+    protected val subscribersSavedChecksums = mutableMapOf<UUID, MutableMap<Long, MutableMap<Int, ByteArray>>>()
 
     private val data = mutableMapOf<Long, MutableMap<Int, T>>()
     private val dataUpdates = mutableMapOf<Long, MutableMap<Int, T?>?>()
 
-    private val uuidToPlayer = mutableMapOf<UUID, Player?>()
+    protected val uuidToPlayer = mutableMapOf<UUID, Player?>()
 
     protected val lock = ReentrantLock()
     protected var counter = 0
+    protected var forceUpdate: Boolean = false
 
     val allIds: Set<Int>
         get() {
@@ -52,24 +53,20 @@ abstract class SynchronisedDataTransmitter<T: Serializable> (
 
 //    abstract fun sendUpdateToSubscriber(ctx: NetworkManager.PacketContext, data: T2RSynchronizationTickData)
 
-    protected inline fun <T>lock(fn: () -> T): T {
-        synchronized(lock) {
-            return fn()
-        }
-    }
+    protected inline fun <T>lock(fn: () -> T): T = synchronized(lock) { fn() }
 
-    fun get(page: Long): Map<Int, T>? = data[page]
+    internal fun get(page: Long): Map<Int, T>? = data[page]
 
-    fun add(page: Long, item: T): Int = lock {
+    internal fun add(page: Long, item: T): Int = lock {
         set(page, counter, item)
         return counter-1
     }
-    fun add(pages: Set<Long>, item: T): Int = lock {
+    internal fun add(pages: Set<Long>, item: T): Int = lock {
         set(pages, counter, item)
         return counter-1
     }
 
-    fun set(page: Long, index: Int, item: T) = lock {
+    internal fun set(page: Long, index: Int, item: T) = lock {
         data.getOrPut(page) { mutableMapOf() }[index] = item
 
         var updatePage = dataUpdates.getOrPut(page) { mutableMapOf() }
@@ -82,27 +79,31 @@ abstract class SynchronisedDataTransmitter<T: Serializable> (
         counter = max(index + 1, counter)
     }
 
-    fun set(pages: Set<Long>, index: Int, item: T) = lock {
+    internal fun set(pages: Set<Long>, index: Int, item: T) = lock {
         pages.forEach { page -> set(page, index, item) }
     }
 
-    fun remove(page: Long, index: Int): Boolean = lock {
+    internal fun remove(page: Long, index: Int): Boolean = lock {
         data[page]?.remove(index) ?: return false
         dataUpdates.getOrPut(page) {mutableMapOf()}?.set(index, null)
         return true
     }
 
-    fun remove(page: Long) = lock {
+    internal fun remove(page: Long) = lock {
         data.remove(page)
         dataUpdates[page] = null
     }
 
-    fun subscribeTo(uuid: UUID, player: Player, page: Long) {
+    internal fun subscribeTo(uuid: UUID, player: Player, page: Long) = lock {
         uuidToPlayer[uuid] = player
         subscribersSavedChecksums.getOrPut(uuid) {mutableMapOf()}.getOrPut(page) {mutableMapOf()}
     }
 
-    fun removeSubscriber(uuid: UUID) {
+    internal fun unsubscribeFrom(uuid: UUID, page: Long) = lock {
+        subscribersSavedChecksums[uuid]?.remove(page)
+    }
+
+    internal fun removeSubscriber(uuid: UUID) = lock {
         uuidToPlayer.remove(uuid)
         subscribersSavedChecksums.remove(uuid)
     }
@@ -158,13 +159,14 @@ abstract class SynchronisedDataTransmitter<T: Serializable> (
     }
 
     fun synchronizationTick() {
-        if (dataUpdates.isEmpty()) {return}
+        if (dataUpdates.isEmpty() && !forceUpdate) {return}
         lock {
             subscribersSavedChecksums.forEach { (sub, checksums) ->
                 val res = compileUpdateDataForSubscriber(dataUpdates, checksums) ?: return@forEach
                 trSynchronizeData.startSendingDataToReceiver(res, FakePacketContext((uuidToPlayer[sub] ?: return@forEach) as ServerPlayer))
             }
             dataUpdates.clear()
+            forceUpdate = false
         }
     }
 

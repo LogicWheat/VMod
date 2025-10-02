@@ -25,13 +25,13 @@ import net.spaceeye.vmod.utils.getNow_ms
 import org.valkyrienskies.core.impl.game.ships.ShipObjectClientWorld
 import org.valkyrienskies.mod.common.shipObjectWorld
 import java.awt.Color
-import java.util.*
 
 object ReservedRenderingPages {
     const val TimedRenderingObjects = -1L
     const val ClientsideRenderingObjects = -2L
+    const val WorldRenderingObject = -3L
 
-    val reservedPages = listOf(TimedRenderingObjects, ClientsideRenderingObjects)
+    val reservedPages = listOf(TimedRenderingObjects, ClientsideRenderingObjects, WorldRenderingObject)
 }
 
 private object RenderingSettings {
@@ -105,11 +105,16 @@ fun renderInWorld(poseStack: PoseStack, camera: Camera, minecraft: Minecraft, re
     minecraft.profiler.push("vmod_rendering_clientside_objects")
     renderClientsideObjects(poseStack, camera, renderBlockRenderers, now)
     minecraft.profiler.pop()
+
+    minecraft.profiler.push("vmod_rendering_world_objects")
+    renderWorldObjects(poseStack, camera, renderBlockRenderers, now, renderTick)
+    minecraft.profiler.pop()
 }
 
 private fun renderShipObjects(poseStack: PoseStack, camera: Camera, renderBlockRenderers: Boolean, timestamp: Long, renderTick: Long) {
     val level = Minecraft.getInstance().level!!
 
+    //TODO why tf does try wrap everything and not individual objects
     try {
     val data = RenderingData.client.getData()
     val ids = level.shipObjectWorld.loadedShips.map { it.id }.toMutableList()
@@ -177,4 +182,27 @@ private fun renderClientsideObjects(poseStack: PoseStack, camera: Camera, render
     //TODO show that error happened to player?
     } catch (e: Exception) { ELOG("Renderer raised exception:\n${e.stackTraceToString()}")
     } catch (e: Error) { ELOG("Renderer raised error!!!\n${e.stackTraceToString()}") }
+}
+
+private fun renderWorldObjects(poseStack: PoseStack, camera: Camera, renderBlockRenderers: Boolean, timestamp: Long, renderTick: Long) {
+    val cameraPos = camera.position
+    val maxDist = Minecraft.getInstance().gameRenderer.renderDistance
+    for ((_, page) in RenderingData.clientWorld.getData()) {
+        for ((_, render) in page) {
+            try {
+            render as PositionDependentRenderer
+            if ((render.renderingPosition.copy().also { it.y = 0.0 }.sub(cameraPos.x, 0, cameraPos.z)).dist() > maxDist) { continue }
+
+            val poseStack = PoseStack().also {
+                it.setIdentity()
+                it.mulPoseMatrix(poseStack.last().pose())
+            }
+            when (render) {
+                is BlockRenderer -> if (renderBlockRenderers) if (render.renderingTick != renderTick) render.also { it.renderingTick = renderTick }.renderBlockData(poseStack, camera, RenderingStuff.blockBuffer, timestamp)
+                else -> if(!renderBlockRenderers) if (render.renderingTick != renderTick) render.also { it.renderingTick = renderTick }.renderData(poseStack, camera, timestamp)
+            }
+            } catch (e: Exception) { ELOG("Renderer raised exception:\n${e.stackTraceToString()}")
+            } catch (e: Error) { ELOG("Renderer raised error!!!\n${e.stackTraceToString()}") }
+        }
+    }
 }

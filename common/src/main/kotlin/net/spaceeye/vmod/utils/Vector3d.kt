@@ -2,6 +2,7 @@ package net.spaceeye.vmod.utils
 
 import net.minecraft.core.BlockPos
 import net.minecraft.network.FriendlyByteBuf
+import net.minecraft.world.level.ChunkPos
 import org.joml.Vector4d
 import kotlin.math.max
 import kotlin.math.min
@@ -48,6 +49,7 @@ class Vector3d(x:Number, y:Number, z:Number) {
     fun toArray() = arrayOf(x, y, z)
     fun toBlockPos() = BlockPos(x, y, z)
     fun toMCVec3() = MCVec3(x, y, z)
+    fun toChunkPos() = ChunkPos(x.toInt() shr 4, z.toInt() shr 4)
 
     fun copy() = Vector3d(x, y, z)
 

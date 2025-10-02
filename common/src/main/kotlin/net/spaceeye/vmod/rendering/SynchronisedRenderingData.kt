@@ -16,25 +16,25 @@ import net.spaceeye.vmod.reflectable.AutoSerializable
 import net.spaceeye.vmod.utils.*
 import net.spaceeye.vmod.rendering.types.*
 import org.valkyrienskies.core.api.ships.properties.ShipId
-import org.valkyrienskies.core.impl.game.ships.ShipObjectClientWorld
+import org.valkyrienskies.core.apigame.world.properties.DimensionId
 import org.valkyrienskies.core.impl.hooks.VSEvents
 import org.valkyrienskies.mod.common.shipObjectWorld
 import java.util.*
 
-private fun serializeItem(buf: FriendlyByteBuf, item: Serializable) {
+internal fun serializeItem(buf: FriendlyByteBuf, item: Serializable) {
     buf.writeInt(RenderingTypes.typeToIdx(item::class.java as Class<out BaseRenderer>)!!)
     buf.writeByteArray(item.serialize().array())
 }
 
-private fun deserializeItem(buf: FriendlyByteBuf): Serializable {
+internal fun deserializeItem(buf: FriendlyByteBuf): Serializable {
     val item = RenderingTypes.idxToSupplier(buf.readInt()).get()
     item.deserialize(FriendlyByteBuf(Unpooled.wrappedBuffer(buf.readByteArray())))
     return item
 }
 
-class ClientSynchronisedRenderingData:
+class ClientSynchronisedRenderingData(streamName: String = "rendering_data"):
     SynchronisedDataReceiver<BaseRenderer>(
-        "rendering_data",
+        streamName,
         NetworkManager.Side.S2C,
         NetworkManager.Side.C2S,
         1000000,
@@ -94,27 +94,45 @@ class ServerSynchronisedRenderingData:
         addCustomServerClosable { close(); idToPages.clear() }
         TickEvent.SERVER_PRE.register {
             synchronizationTick()
+            worldRenderingData.synchronizationTick()
         }
     }
+
+    internal val worldRenderingData = ServerWorldSynchronisedRenderingData()
 
     private var idToPages = mutableMapOf<Int, Set<Long>>()
     private val groundIds: Collection<Long> get() = ServerObjectsHolder.overworldServerLevel!!.shipObjectWorld.dimensionToGroundBodyIdImmutable.values
 
     fun setUpdated(id: Int, renderer: BaseRenderer): Boolean = lock {
         val pages = idToPages[id] ?: return@lock false
+        if (pages.contains(ReservedRenderingPages.WorldRenderingObject)) {
+            if (renderer !is PositionDependentRenderer) throw RuntimeException("World Renderers should implement PositionDependentRenderer")
+            return worldRenderingData.setRenderer(id, renderer) != null
+        }
         set(pages, id, renderer)
-        return@lock true
+        return true
     }
 
     fun setRenderer(shipIds: List<ShipId>, id: Int, renderer: BaseRenderer): Int = lock {
-        val idsToUse = shipIds.filter { !groundIds.contains(it) }.also { if (it.isEmpty()) { throw NotImplementedError("World Renderers are not implemented") } }.toSet()
+        val idsToUse = shipIds.filter { !groundIds.contains(it) }.also { if (it.isEmpty()) {
+            if (renderer !is PositionDependentRenderer) throw RuntimeException("World Renderers should implement PositionDependentRenderer")
+            worldRenderingData.setRenderer(id, renderer) ?: return id
+            idToPages[id] = setOf(ReservedRenderingPages.WorldRenderingObject)
+            return id
+        } }.toSet()
         set(idsToUse, id, renderer)
         idToPages[id] = idsToUse
         return id
     }
 
-    fun addRenderer(shipIds: List<ShipId>, renderer: BaseRenderer): Int = lock {
-        val idsToUse = shipIds.filter { !groundIds.contains(it) }.also { if (it.isEmpty()) { throw NotImplementedError("World Renderers are not implemented") } }.toSet()
+    fun addRenderer(shipIds: List<ShipId>, renderer: BaseRenderer, dimensionId: DimensionId? = null): Int = lock {
+        val idsToUse = shipIds.filter { !groundIds.contains(it) }.also { if (it.isEmpty() || (it.size == 1 && it.contains(-1L))) {
+            if (renderer !is PositionDependentRenderer) throw RuntimeException("World Renderers should implement PositionDependentRenderer")
+            if (dimensionId == null) throw RuntimeException("World Renderers need non-null dimensionId")
+            val id = worldRenderingData.addRenderer(dimensionId, renderer)
+            idToPages[id] = setOf(ReservedRenderingPages.WorldRenderingObject)
+            return id
+        } }.toSet()
         val id = add(idsToUse, renderer)
         idToPages[id] = idsToUse
         return id
@@ -123,11 +141,18 @@ class ServerSynchronisedRenderingData:
     fun removeRenderer(id: Int): Boolean = lock {
         val pageIds = idToPages[id] ?: return false
         idToPages.remove(id)
+
+        if (pageIds.contains(ReservedRenderingPages.WorldRenderingObject)) {
+            return worldRenderingData.removeRenderer(id) != null
+        }
         return pageIds.map { pageId -> remove(pageId, id) }.any { it }
     }
 
     fun getRenderer(id: Int): BaseRenderer? = lock {
         val pagesId = idToPages[id] ?: return null
+        if (pagesId.contains(ReservedRenderingPages.WorldRenderingObject)) {
+            return worldRenderingData.getRenderer(id)
+        }
         pagesId.forEach { pageId -> get(pageId)?.get(id)?.also { return it } }
         return null
     }
@@ -163,6 +188,8 @@ private object SynchronisedRenderingData {
     var clientSynchronisedData = ClientSynchronisedRenderingData()
     var serverSynchronisedData = ServerSynchronisedRenderingData()
 
+    var worldClientSynchronisedRenderingData = ClientSynchronisedRenderingData("world_rendering_data")
+
     init {
         makeServerEvents()
         makeClientEvents()
@@ -194,10 +221,12 @@ private object SynchronisedRenderingData {
 
         PlayerEvent.PLAYER_JOIN.register {
             clientSynchronisedData.s2cSetSchema.sendToClient(it, ServerSetRenderingSchemaPacket(RenderingTypes.getSchema()))
+            worldClientSynchronisedRenderingData.s2cSetSchema.sendToClient(it, ServerSetRenderingSchemaPacket(RenderingTypes.getSchema()))
             serverSynchronisedData.subscribePlayerToReservedPages(it)
         }
         PlayerEvent.PLAYER_QUIT.register {
             serverSynchronisedData.removeSubscriber(it.uuid)
+            serverSynchronisedData.worldRenderingData.removeSubscriber(it.uuid)
         }
     }
 }
@@ -205,6 +234,7 @@ private object SynchronisedRenderingData {
 object RenderingData {
     val client get() = SynchronisedRenderingData.clientSynchronisedData
     val server get() = SynchronisedRenderingData.serverSynchronisedData
+    val clientWorld get() = SynchronisedRenderingData.worldClientSynchronisedRenderingData
 }
 
 fun initRenderingData() {

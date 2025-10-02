@@ -6,6 +6,7 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.level.block.Blocks
 import net.spaceeye.vmod.rendering.RenderingData
+import net.spaceeye.vmod.rendering.types.ConeBlockRenderer
 import net.spaceeye.vmod.rendering.types.debug.RainbowRenderer
 import net.spaceeye.vmod.toolgun.modes.ExtendableToolgunMode
 import net.spaceeye.vmod.toolgun.modes.ToolgunModes
@@ -15,7 +16,9 @@ import net.spaceeye.vmod.utils.*
 import net.spaceeye.vmod.vsStuff.CustomBlockMassManager
 import org.valkyrienskies.core.api.ships.ServerShip
 import org.valkyrienskies.mod.common.BlockStateInfo
+import org.valkyrienskies.mod.common.dimensionId
 import org.valkyrienskies.mod.common.shipObjectWorld
+import java.awt.Color
 
 class TestMode: ExtendableToolgunMode() {
     override val itemName = makeFake("Test Mode")
@@ -26,6 +29,11 @@ class TestMode: ExtendableToolgunMode() {
 
     fun activatePrimaryFunction(level: ServerLevel, player: ServerPlayer, raycastResult: RaycastFunctions.RaycastResult)  {
         if (raycastResult.state.isAir) {return}
+
+        RenderingData.server.addRenderer(listOf(), ConeBlockRenderer(
+            raycastResult.worldHitPos!! + raycastResult.globalNormalDirection!! * 0.5, getQuatFromDir(raycastResult.worldNormalDirection!!), 1f, -1, Color(255, 255, 255, 255), true
+        ), level.dimensionId)
+
         val ship = raycastResult.ship as? ServerShip ?: return
         val lship = level.shipObjectWorld.loadedShips.getById(ship.id)
 

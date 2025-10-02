@@ -27,7 +27,6 @@ import org.valkyrienskies.core.api.ships.Ship
 import org.valkyrienskies.core.api.ships.properties.ShipId
 import org.valkyrienskies.mod.common.getShipManagingPos
 import org.valkyrienskies.mod.common.util.toFloat
-import org.valkyrienskies.mod.common.util.toMinecraft
 import java.awt.Color
 
 
@@ -35,7 +34,7 @@ object A {
     val testState = VMBlocks.CONE_THRUSTER.get().defaultBlockState()
 }
 
-class ConeBlockRenderer(): BlockRenderer(), ReflectableObject {
+class ConeBlockRenderer(): BlockRenderer(), ReflectableObject, PositionDependentRenderer {
     private class Data: AutoSerializable {
         @JsonIgnore
         private var i = 0
@@ -51,6 +50,7 @@ class ConeBlockRenderer(): BlockRenderer(), ReflectableObject {
     override val reflectObjectOverride: ReflectableObject? get() = data
     override fun serialize() = data.serialize()
     override fun deserialize(buf: FriendlyByteBuf) { data.deserialize(buf) }
+    override val renderingPosition: Vector3d get() = data.pos
 
     constructor(
         pos: Vector3d,
@@ -88,9 +88,9 @@ class ConeBlockRenderer(): BlockRenderer(), ReflectableObject {
         RenderSystem.setShader(GameRenderer::getPositionShader)
         RenderSystem.enableBlend()
 
-        val ship = (level.getShipManagingPos(pos.toBlockPos()) ?: return) as ClientShip
-        val shipScale = ship.renderTransform.shipToWorldScaling.x()
-        val rpoint = posShipToWorldRender(ship, pos)
+        val ship = (level.getShipManagingPos(pos.toBlockPos())) as? ClientShip
+        val shipScale = ship?.renderTransform?.shipToWorldScaling?.x() ?: 1.0
+        val rpoint = if (ship != null) posShipToWorldRender(ship, pos) else pos
 
         poseStack.pushPose()
 
@@ -99,7 +99,7 @@ class ConeBlockRenderer(): BlockRenderer(), ReflectableObject {
 
         poseStack.mulPose(
             Quaterniond()
-                .mul(ship.renderTransform.shipToWorldRotation)
+                .mul(ship?.renderTransform?.shipToWorldRotation ?: Quaterniond())
                 .mul(rot)
                 .toFloat()
         )
