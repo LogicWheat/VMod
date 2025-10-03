@@ -1,9 +1,14 @@
 package net.spaceeye.vmod.schematic
 
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.core.registries.Registries
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.FriendlyByteBuf
+import net.minecraft.resources.ResourceKey
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.world.level.block.Block
 import net.spaceeye.valkyrien_ship_schematics.ShipSchematic
 import net.spaceeye.valkyrien_ship_schematics.containers.v1.*
 import net.spaceeye.valkyrien_ship_schematics.interfaces.IBlockStatePalette
@@ -16,9 +21,9 @@ import net.spaceeye.valkyrien_ship_schematics.interfaces.v1.SchemSerializeDataV1
 import net.spaceeye.vmod.ELOG
 import net.spaceeye.vmod.VM
 import net.spaceeye.vmod.VMConfig
+import net.spaceeye.vmod.WLOG
 import net.spaceeye.vmod.toolgun.SELOG
 import net.spaceeye.vmod.utils.*
-import net.spaceeye.vmod.utils.vs.rotateAroundCenter
 import net.spaceeye.vmod.utils.vs.traverseGetAllTouchingShips
 import org.joml.Quaterniond
 import org.joml.Quaterniondc
@@ -56,19 +61,39 @@ class VModShipSchematicV2(): IShipSchematic, IShipSchematicDataV1, SchemSerializ
     override var extraData: MutableList<Pair<String, FriendlyByteBuf>> = mutableListOf()
 
     override var info: IShipSchematicInfo? = null
-//    override var entityData: MutableMap<ShipId, List<EntityItem>> = mutableMapOf()
+}
+
+private fun parseList(data: String): Set<Block> {
+    val lookup = BuiltInRegistries.BLOCK.asLookup()!!
+
+    return data
+        .split(",")
+        .map { it.trimStart().trimEnd() }
+        .mapNotNull {
+            try {
+                lookup.get(ResourceKey.create(Registries.BLOCK, ResourceLocation(it))).get().value()
+            } catch (e: Exception) {
+                WLOG("Unknown resource location $it")
+                null;
+            }
+        }.toSet()
 }
 
 @OptIn(VsBeta::class)
 fun IShipSchematicDataV1.placeAt(
     level: ServerLevel, player: ServerPlayer?, uuid: UUID, pos: Vector3d, rotation: Quaterniondc,
     settings: PasteSchematicSettings = PasteSchematicSettings(
-         logger = VM.logger,
-         //TODO add to wiki or smth "if you have shitload of "Schematic had x nonfatal errors" then set those to false"
-         allowChunkPlacementInterruption = VMConfig.SERVER.SCHEMATICS.ALLOW_CHUNK_PLACEMENT_INTERRUPTION,
-         allowUpdateInterruption = VMConfig.SERVER.SCHEMATICS.ALLOW_CHUNK_UPDATE_INTERRUPTION,
-         //TODO think of a way to make str into translatable
-         nonfatalErrorsHandler = { numErrors, _, player -> player?.let { VMToolgun.server.sendErrorTo(it, "Schematic had $numErrors nonfatal errors") } }
+        logger = VM.logger,
+        //TODO add to wiki or smth "if you have shitload of "Schematic had x nonfatal errors" then set those to false"
+        allowChunkPlacementInterruption = VMConfig.SERVER.SCHEMATICS.ALLOW_CHUNK_PLACEMENT_INTERRUPTION,
+        allowUpdateInterruption = VMConfig.SERVER.SCHEMATICS.ALLOW_CHUNK_UPDATE_INTERRUPTION,
+        loadContainers = VMConfig.SERVER.SCHEMATICS.LOAD_CONTAINERS,
+        loadEntities = VMConfig.SERVER.SCHEMATICS.LOAD_ENTITIES,
+        blacklistMode = VMConfig.SERVER.SCHEMATICS.BLACKLIST_MODE,
+        nbtLoadingBlacklist = parseList(VMConfig.SERVER.SCHEMATICS.BLACKLIST),
+        nbtLoadingWhitelist = parseList(VMConfig.SERVER.SCHEMATICS.WHITELIST),
+        //TODO think of a way to make str into translatable
+        nonfatalErrorsHandler = { numErrors, _, player -> player?.let { VMToolgun.server.sendErrorTo(it, "Schematic had $numErrors nonfatal errors") } }
      ), postPlaceFn: (List<ServerShip>) -> Unit): Boolean {
     extraData.forEach { (_, bytes) -> bytes.setIndex(0, bytes.accessByteBufWithCorrectSize().size) }
 

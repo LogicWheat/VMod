@@ -69,6 +69,11 @@ object VMConfig {
 
             var ALLOW_CHUNK_PLACEMENT_INTERRUPTION: Boolean by CBool(true, "Allows ships to be created over several ticks (so that if you have a huge ship it won't freeze server). May be incompatible with some mods though.")
             var ALLOW_CHUNK_UPDATE_INTERRUPTION: Boolean by CBool(true, "Allows ships to be updated over several ticks (so that if you have a huge ship it won't freeze server). May be incompatible with some mods though.")
+            var LOAD_CONTAINERS: Boolean by CBool(true, "Determines whenever or not block entities implementing from Container (chests for example) will be loaded")
+            var LOAD_ENTITIES: Boolean by CBool(true, "Determines whenever or not entities will be loaded")
+            var BLACKLIST_MODE: Boolean by CBool(true, "If true, will load nbt of all block entities that are not in blacklist. If false, will only load nbt of whitelisted block entities")
+            var BLACKLIST: String by CString("", "Write resource location of blocks separated by commas, like \"minecraft:chest, some_mod:idk\"")
+            var WHITELIST: String by CString("", "Write resource location of blocks separated by commas, like \"minecraft:chest, some_mod:idk\"")
         }
 
         class ShipyardPruner: ConfigSubDirectory() {
