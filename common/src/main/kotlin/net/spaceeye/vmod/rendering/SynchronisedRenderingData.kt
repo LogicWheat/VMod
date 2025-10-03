@@ -93,8 +93,9 @@ class ServerSynchronisedRenderingData:
     init {
         addCustomServerClosable { close(); idToPages.clear() }
         TickEvent.SERVER_PRE.register {
-            synchronizationTick()
-            worldRenderingData.synchronizationTick()
+            synchronizeUpdates()
+            worldRenderingData.synchronizeUpdates()
+            worldRenderingData.completeSynchronize(worldRenderingData.playerUpdates)
         }
     }
 

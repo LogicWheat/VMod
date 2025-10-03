@@ -27,9 +27,9 @@ import org.valkyrienskies.mod.common.shipObjectWorld
 import java.awt.Color
 
 object ReservedRenderingPages {
-    const val TimedRenderingObjects = -1L
-    const val ClientsideRenderingObjects = -2L
-    const val WorldRenderingObject = -3L
+    const val WorldRenderingObject = -1L
+    const val TimedRenderingObjects = -2L
+    const val ClientsideRenderingObjects = -3L
 
     val reservedPages = listOf(TimedRenderingObjects, ClientsideRenderingObjects, WorldRenderingObject)
 }

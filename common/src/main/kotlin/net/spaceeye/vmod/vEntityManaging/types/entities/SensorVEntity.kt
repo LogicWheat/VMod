@@ -17,7 +17,7 @@ import org.valkyrienskies.mod.common.shipObjectWorld
 import net.spaceeye.vmod.utils.RaycastFunctions
 import net.spaceeye.vmod.utils.vs.posShipToWorld
 import net.spaceeye.vmod.utils.vs.transformDirectionShipToWorld
-import org.valkyrienskies.mod.common.dimensionId
+import org.valkyrienskies.mod.common.getLevelFromDimensionId
 import kotlin.math.min
 
 class SensorVEntity(): ExtendableVEntity(), Tickable, VEAutoSerializable {
@@ -48,7 +48,7 @@ class SensorVEntity(): ExtendableVEntity(), Tickable, VEAutoSerializable {
         this.scale = scale
     }
 
-    override fun iStillExists(allShips: QueryableShipData<Ship>, dimensionIds: Collection<ShipId>) = allShips.contains(shipId)
+    override fun iStillExists(allShips: QueryableShipData<Ship>, dimensionIds: Collection<ShipId>) = shipId == -1L || allShips.contains(shipId)
     override fun iAttachedToShips(dimensionIds: Collection<ShipId>) = mutableListOf(shipId)
     override fun iGetAttachmentPoints(qshipId: ShipId): List<Vector3d> = if (shipId == qshipId || qshipId == -1L) listOf(Vector3d(pos)) else emptyList()
 
@@ -68,6 +68,7 @@ class SensorVEntity(): ExtendableVEntity(), Tickable, VEAutoSerializable {
     }
 
     override fun iOnMakeVEntity(level: ServerLevel): Boolean {
+        if (shipId == -1L) return true
         level.shipObjectWorld.loadedShips.getById(shipId) ?: return false
         return true
     }
@@ -75,25 +76,19 @@ class SensorVEntity(): ExtendableVEntity(), Tickable, VEAutoSerializable {
     override fun iOnDeleteVEntity(level: ServerLevel) {}
 
     override fun tick(server: MinecraftServer, unregister: () -> Unit) {
-        val ship = server.shipObjectWorld.allShips.getById(shipId) ?: return
-        ship.chunkClaimDimension
+        val ship = server.shipObjectWorld.allShips.getById(shipId)
 
-        var serverLevel: ServerLevel? = null
-        for (level in server.allLevels) {
-            if (level.dimensionId != ship.chunkClaimDimension) {continue}
-            serverLevel = level
-            break
-        }
-        if (serverLevel == null) {return}
+        //TODO
+        var serverLevel: ServerLevel = server.getLevelFromDimensionId(dimensionId ?: return) ?: return
 
         val result = RaycastFunctions.raycast(
             serverLevel,
             RaycastFunctions.Source(
-                transformDirectionShipToWorld(ship, lookDir),
-                posShipToWorld(ship, pos + lookDir * 0.5 * scale)
+                ship?.let{ transformDirectionShipToWorld(ship, lookDir) } ?: lookDir,
+                ship?.let { posShipToWorld(ship, pos + lookDir * 0.5 * scale) } ?: (pos + lookDir * 0.5 * scale)
             ),
             maxDistance,
-            if (ignoreSelf) {ship.id} else {null}
+            if (ignoreSelf) {ship?.id} else {null}
         )
 
         val distance = (result.origin - (result.worldHitPos ?: (result.origin + result.lookVec * maxDistance))).dist()

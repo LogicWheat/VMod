@@ -2,6 +2,7 @@
 * Added function "/vmod op prune-shipyard-chunks" to delete chunks of deleted ships
 * Added automatic region cleanup on ship deletion
 * Fixed "/vmod op clear-vmod-attachments" not working
+* Sensor can now be placed in world and not just ships
 
 # 1.7.1
 * Fixed bug with "Open or Close Toolgun GUI" keybind stopping working sometimes

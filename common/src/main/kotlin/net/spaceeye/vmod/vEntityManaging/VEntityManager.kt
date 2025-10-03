@@ -6,6 +6,7 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.player.Player
+import net.minecraft.world.level.ChunkPos
 import net.minecraft.world.level.saveddata.SavedData
 import net.spaceeye.valkyrien_ship_schematics.SchematicEventRegistry
 import net.spaceeye.vmod.ELOG
@@ -57,6 +58,11 @@ open class VEntityManager: SavedData() {
     private val shipDataStatus = mutableMapOf<ShipId, ShipData>()
 
     private val posToMId: MutableMap<String, PosMapList<VEntityId>> = mutableMapOf()
+    //TODO pointless?
+    private val cposToMId: MutableMap<String, PosMapList<VEntityId>> = mutableMapOf()
+
+    private val dimensionToId = mutableMapOf<String, Long>()
+    private var nextDimensionId = -1L
 
     fun saveActiveVEntities(tag: CompoundTag): CompoundTag {
         val dimensionIds = dimensionToGroundBodyIdImmutable!!.values
@@ -181,8 +187,12 @@ open class VEntityManager: SavedData() {
 
         for (vEntity in toLoadVEntities) {
             if (!vEntity.stillExists(allShips!!, dimensionIds)) { continue }
-            val neededIds = vEntity.attachedToShips(dimensionIds).toMutableSet()
-            groups.getOrPut(neededIds) { mutableListOf() }.add(vEntity)
+            val neededIds = vEntity.attachedToShips(dimensionIds)
+            if (neededIds.size == 1 && neededIds.contains(-1L)) {
+                levels[vEntity.dimensionId]?.also { makeVEntityWithId(it, vEntity, vEntity.mID) {} }
+                continue
+            }
+            groups.getOrPut(neededIds.toMutableSet()) { mutableListOf() }.add(vEntity)
         }
 
         for ((neededIds, toLoad) in groups) {
@@ -250,10 +260,20 @@ open class VEntityManager: SavedData() {
             ELOG("Was not able to create VEntity of type ${entity.getType()} under ID ${entity.mID}")
             callback(null)
         }) {
-            entity.attachedToShips(dimensionToGroundBodyIdImmutable!!.values).forEach { shipToVEntity.computeIfAbsent(it) { mutableListOf() }.add(entity) }
+            val attachedTo = entity.attachedToShips(dimensionToGroundBodyIdImmutable!!.values)
+            //if world ventity
+            if (attachedTo.size == 1 && attachedTo.contains(-1)) {
+                val groundId = dimensionToId.getOrPut(level.dimensionId) { nextDimensionId-- }
+                shipToVEntity.computeIfAbsent(groundId) { mutableListOf() }.add(entity)
+            } else {
+                attachedTo.forEach { shipToVEntity.computeIfAbsent(it) { mutableListOf() }.add(entity) }
+            }
             idToVEntity[entity.mID] = entity
             if (entity is Tickable) { tickingVEntities.add(entity) }
-            entity.getAttachmentPoints().forEach { posToMId.getOrPut(entity.dimensionId!!) { PosMapList() }.addItemTo(entity.mID, it.toBlockPos()) }
+            entity.getAttachmentPoints().forEach {
+                posToMId.getOrPut(entity.dimensionId!!) { PosMapList() }.addItemTo(entity.mID, it.toBlockPos())
+                cposToMId.getOrPut(entity.dimensionId!!) { PosMapList() }.addItemTo(entity.mID, (it.also { it.y = 0.0 } / 16).toBlockPos())
+            }
 
             setDirty()
 
@@ -266,11 +286,21 @@ open class VEntityManager: SavedData() {
     fun removeVEntity(level: ServerLevel, id: VEntityId): Boolean {
         val entity = idToVEntity[id] ?: return false
 
-        entity.attachedToShips(dimensionToGroundBodyIdImmutable!!.values).forEach { (shipToVEntity[it] ?: return@forEach).remove(entity) }
+        val attachedTo = entity.attachedToShips(dimensionToGroundBodyIdImmutable!!.values)
+        //if world ventity
+        if (attachedTo.size == 1 && attachedTo.contains(-1)) {
+            shipToVEntity[dimensionToId[entity.dimensionId] ?: ""]?.remove(entity)
+        } else {
+            attachedTo.forEach { (shipToVEntity[it] ?: return@forEach).remove(entity) }
+        }
+
         entity.onDeleteVEntity(level)
         idToVEntity.remove(id)
         if (entity is Tickable) { tickingVEntities.remove(entity) }
-        entity.getAttachmentPoints().forEach { posToMId.getOrPut(entity.dimensionId!!) { PosMapList() }.removeItemFromPos(entity.mID, it.toBlockPos()) }
+        entity.getAttachmentPoints().forEach {
+            posToMId.getOrPut(entity.dimensionId!!) { PosMapList() }.removeItemFromPos(entity.mID, it.toBlockPos())
+            cposToMId.getOrPut(entity.dimensionId!!) { PosMapList() }.removeItemFromPos(entity.mID, (it.also { it.y = 0.0 } / 16).toBlockPos())
+        }
 
         setDirty()
         return true
@@ -287,18 +317,31 @@ open class VEntityManager: SavedData() {
             ELOG("Was not able to create VEntity of type ${entity.getType()} under ID ${entity.mID}")
             callback(null)
         }) {
-            entity.attachedToShips(dimensionToGroundBodyIdImmutable!!.values).forEach { shipToVEntity.computeIfAbsent(it) { mutableListOf() }.add(entity) }
+            val attachedTo = entity.attachedToShips(dimensionToGroundBodyIdImmutable!!.values)
+            //if world ventity
+            if (attachedTo.size == 1 && attachedTo.contains(-1)) {
+                val groundId = dimensionToId.getOrPut(level.dimensionId) { nextDimensionId-- }
+                shipToVEntity.computeIfAbsent(groundId) { mutableListOf() }.add(entity)
+            } else {
+                attachedTo.forEach { shipToVEntity.computeIfAbsent(it) { mutableListOf() }.add(entity) }
+            }
             if (idToVEntity.contains(entity.mID)) { ELOG("OVERWRITING AN ALREADY EXISTING VEntity IN makeVEntityWithId. SOMETHING PROBABLY WENT WRONG AS THIS SHOULDN'T HAPPEN.") }
             idToVEntity[entity.mID] = entity
             if (entity is Tickable) { tickingVEntities.add(entity) }
-            entity.getAttachmentPoints().forEach { posToMId.getOrPut(entity.dimensionId!!) { PosMapList() }.addItemTo(entity.mID, it.toBlockPos()) }
+            entity.getAttachmentPoints().forEach {
+                posToMId.getOrPut(entity.dimensionId!!) { PosMapList() }.addItemTo(entity.mID, it.toBlockPos())
+                cposToMId.getOrPut(entity.dimensionId!!) { PosMapList() }.addItemTo(entity.mID, (it.also { it.y = 0.0 } / 16).toBlockPos())
+            }
 
             setDirty()
             callback(entity.mID)
         }
     }
 
+    fun tryGetIdsOfPosition(dimensionId: DimensionId, x: Int, y: Int, z: Int): List<VEntityId>? = posToMId.getOrPut(dimensionId) { PosMapList() }.getItemsAt(x, y, z)
     fun tryGetIdsOfPosition(dimensionId: DimensionId, pos: BlockPos): List<VEntityId>? = posToMId.getOrPut(dimensionId) { PosMapList() }.getItemsAt(pos)
+    fun tryGetIdsOfCPosition(dimensionId: DimensionId, x: Int, z: Int): List<VEntityId>? = cposToMId.getOrPut(dimensionId) { PosMapList() }.getItemsAt(x, 0, z)
+    fun tryGetIdsOfCPosition(dimensionId: DimensionId, pos: ChunkPos): List<VEntityId>? = cposToMId.getOrPut(dimensionId) { PosMapList() }.getItemsAt(pos.x, 0, pos.z)
 
     fun disableCollisionBetween(level: ServerLevel, shipId1: ShipId, shipId2: ShipId, callback: (() -> Unit)? = null): Boolean {
         if (!level.shipObjectWorld.disableCollisionBetweenBodies(shipId1, shipId2)) { return false }

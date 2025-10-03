@@ -35,7 +35,6 @@ abstract class SynchronisedDataTransmitter<T: Serializable> (
 
     protected val lock = ReentrantLock()
     protected var counter = 0
-    protected var forceUpdate: Boolean = false
 
     val allIds: Set<Int>
         get() {
@@ -158,15 +157,24 @@ abstract class SynchronisedDataTransmitter<T: Serializable> (
         return T2RSynchronizationTickData(itemWriter, itemReader, removedPages, idToPageCsms, idToPageItem)
     }
 
-    fun synchronizationTick() {
-        if (dataUpdates.isEmpty() && !forceUpdate) {return}
+    /**
+     * Only acts when page was updated and gives updates to subscribers
+     */
+    fun synchronizeUpdates() {
+        if (dataUpdates.isEmpty()) {return}
         lock {
             subscribersSavedChecksums.forEach { (sub, checksums) ->
                 val res = compileUpdateDataForSubscriber(dataUpdates, checksums) ?: return@forEach
                 trSynchronizeData.startSendingDataToReceiver(res, FakePacketContext((uuidToPlayer[sub] ?: return@forEach) as ServerPlayer))
             }
             dataUpdates.clear()
-            forceUpdate = false
+        }
+    }
+
+    fun completeSynchronize(forSubscribers: Set<UUID>) = lock {
+        forSubscribers.forEach { sub -> val checksums = subscribersSavedChecksums[sub] ?: return@forEach
+            val res = compileUpdateDataForSubscriber(data as MutableMap<Long, MutableMap<Int, T?>?>, checksums) ?: return@forEach
+            trSynchronizeData.startSendingDataToReceiver(res, FakePacketContext((uuidToPlayer[sub] ?: return@forEach) as ServerPlayer))
         }
     }
 

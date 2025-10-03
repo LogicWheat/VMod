@@ -44,18 +44,18 @@ class SensorMode: ExtendableToolgunMode(), SensorGUI, SensorHUD {
         if (raycastResult.state.isAir) {return}
         level as ServerLevel
 
-        val ship = level.getShipManagingPos(raycastResult.blockPosition) ?: return
+        val ship = level.getShipManagingPos(raycastResult.blockPosition)
 
         val pos = getModePosition(posMode, raycastResult, precisePlacementAssistSideNum)
         val basePos = pos + raycastResult.globalNormalDirection!! * 0.5
 
         level.makeVEntity(SensorVEntity(
-            ship.id,
+            ship?.id ?: -1,
             basePos,
             raycastResult.globalNormalDirection!!,
             maxDistance, ignoreSelf, scale, channel
         ).addExtension(RenderableExtension(ConeBlockRenderer(
-            basePos, getQuatFromDir(raycastResult.globalNormalDirection!!), scale.toFloat(), ship.id, Color(0, 255, 0), fullbright
+            basePos, getQuatFromDir(raycastResult.globalNormalDirection!!), scale.toFloat(), ship?.id ?: -1, Color(0, 255, 0), fullbright
         ))).addExtension(Strippable())){it.addForVMod(player)}
     }
 

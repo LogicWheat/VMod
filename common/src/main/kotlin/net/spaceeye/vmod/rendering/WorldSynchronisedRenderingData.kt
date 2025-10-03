@@ -23,6 +23,8 @@ class ServerWorldSynchronisedRenderingData: SynchronisedDataTransmitter<BaseRend
     private var idToPage = mutableMapOf<Int, Long>()
     private val dimToCPosToPage = mutableMapOf<String, MutableMap<ChunkPos, Long>>()
 
+    val playerUpdates = mutableSetOf<UUID>()
+
     fun <T> addRenderer(dimensionId: String, render: T): Int where T: BaseRenderer, T: PositionDependentRenderer = lock {
         val cpos = render.renderingPosition.toChunkPos()
         val page = dimToCPosToPage.getOrPut(dimensionId) { mutableMapOf() }.getOrPut(cpos) { nextPage++ }
@@ -68,6 +70,7 @@ class ServerWorldSynchronisedRenderingData: SynchronisedDataTransmitter<BaseRend
                 }
                 if (state.lastCPos == curCPos) continue
                 val cPosToPage = dimToCPosToPage[playerDimension] ?: continue
+                state.lastCPos = curCPos
 
                 lock {
                     uuidToPlayer[player.uuid] = player
@@ -86,7 +89,7 @@ class ServerWorldSynchronisedRenderingData: SynchronisedDataTransmitter<BaseRend
                     toRemove.forEach { playerCached.remove(it) }
                     toAdd.forEach { playerCached.getOrPut(it) { mutableMapOf() } }
                     if (toRemove.isNotEmpty() || toAdd.isNotEmpty()) {
-                        forceUpdate = true
+                        playerUpdates.add(player.uuid)
                     }
                 }
             }

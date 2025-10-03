@@ -1,6 +1,8 @@
 # VERY IMPORTANT
 
-* Rework permission level and player roles
+* Rework permission level and player roles (not sure what i meant by that)
+* Extend config to schem
+* I don't think ventities will work correctly after being teleported to another dimension
 
 # Maybe
 
