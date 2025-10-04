@@ -3,9 +3,11 @@ package net.spaceeye.vmod.utils
 import net.minecraft.core.BlockPos
 import net.minecraft.network.FriendlyByteBuf
 import net.minecraft.world.level.ChunkPos
+import org.joml.Vector3i
 import org.joml.Vector4d
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sign
 
 typealias JVector3d  = org.joml.Vector3d
 typealias JVector3f  = org.joml.Vector3f
@@ -39,6 +41,7 @@ class Vector3d(x:Number, y:Number, z:Number) {
     constructor(o: JVector3dc): this(o.x(), o.y(), o.z())
     constructor(o: BlockPos): this(o.x, o.y, o.z)
     constructor(o: MCVec3): this(o.x, o.y, o.z)
+    constructor(o: Vector3i): this(o.x, o.y, o.z)
 
     fun toD(x:Number, y: Number, z: Number): Array<Double> {return arrayOf(x.toDouble(), y.toDouble(), z.toDouble())}
 
@@ -93,10 +96,7 @@ class Vector3d(x:Number, y:Number, z:Number) {
     fun dist(): Double {return Math.sqrt(x*x + y*y + z*z)}
 
     fun sign(): Vector3d {
-        return Vector3d(
-        if (x < 0) {-1.0} else {1.0},
-        if (y < 0) {-1.0} else {1.0},
-        if (z < 0) {-1.0} else {1.0})
+        return Vector3d(x.sign, y.sign, z.sign)
     }
 
     fun normalize(length: Number, dest: Vector3d): Vector3d {

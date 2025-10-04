@@ -4,12 +4,14 @@ import gg.essential.elementa.components.UIContainer
 import net.spaceeye.vmod.vEntityManaging.types.constraints.SliderConstraint.ConnectionMode
 import net.spaceeye.vmod.guiElements.DItem
 import net.spaceeye.vmod.guiElements.makeDropDown
+import net.spaceeye.vmod.guiElements.makeText
 import net.spaceeye.vmod.guiElements.makeTextEntry
 import net.spaceeye.vmod.limits.ServerLimits
 import net.spaceeye.vmod.toolgun.modes.EGUIBuilder
 import net.spaceeye.vmod.toolgun.modes.GUIBuilder
 import net.spaceeye.vmod.toolgun.modes.state.SliderMode
 import net.spaceeye.vmod.translate.*
+import java.awt.Color
 
 interface SliderGUI: GUIBuilder, EGUIBuilder {
     override val itemName get() = SLIDER
@@ -19,6 +21,8 @@ interface SliderGUI: GUIBuilder, EGUIBuilder {
 
         val offset = 2.0f
         val limits = ServerLimits.instance
+
+        makeText("THIS MODE IS BROKEN, DO NOT USE", Color.RED, 2f, 2f, parentWindow)
 
         makeTextEntry(MAX_FORCE.get(), ::maxForce, offset, offset, parentWindow, limits.maxForce)
 
