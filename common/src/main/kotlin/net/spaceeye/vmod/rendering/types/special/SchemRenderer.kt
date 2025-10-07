@@ -1,7 +1,11 @@
 package net.spaceeye.vmod.rendering.types.special
 
+import com.mojang.blaze3d.systems.RenderSystem
+import com.mojang.blaze3d.vertex.BufferBuilder
 import com.mojang.blaze3d.vertex.PoseStack
+import com.mojang.blaze3d.vertex.VertexBuffer
 import com.mojang.blaze3d.vertex.VertexConsumer
+import com.mojang.blaze3d.vertex.VertexFormat
 import net.minecraft.client.Camera
 import net.minecraft.client.Minecraft
 import net.minecraft.client.multiplayer.ClientLevel
@@ -19,9 +23,7 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.FriendlyByteBuf
 import net.minecraft.sounds.SoundEvent
 import net.minecraft.sounds.SoundSource
-import net.minecraft.util.AbortableIterationConsumer
 import net.minecraft.util.RandomSource
-import net.minecraft.world.Difficulty
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.flag.FeatureFlagSet
@@ -34,11 +36,6 @@ import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.EntityBlock
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
-import net.minecraft.world.level.chunk.DataLayer
-import net.minecraft.world.level.chunk.LightChunk
-import net.minecraft.world.level.chunk.LightChunkGetter
-import net.minecraft.world.level.entity.EntityAccess
-import net.minecraft.world.level.entity.EntityTypeTest
 import net.minecraft.world.level.entity.LevelEntityGetter
 import net.minecraft.world.level.gameevent.GameEvent
 import net.minecraft.world.level.lighting.LevelLightEngine
@@ -46,7 +43,6 @@ import net.minecraft.world.level.material.Fluid
 import net.minecraft.world.level.material.FluidState
 import net.minecraft.world.level.material.Fluids
 import net.minecraft.world.level.saveddata.maps.MapItemSavedData
-import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import net.minecraft.world.scores.Scoreboard
 import net.minecraft.world.ticks.LevelTickAccess
@@ -57,6 +53,7 @@ import net.spaceeye.valkyrien_ship_schematics.interfaces.IShipSchematic
 import net.spaceeye.valkyrien_ship_schematics.interfaces.v1.IShipInfo
 import net.spaceeye.valkyrien_ship_schematics.interfaces.v1.IShipSchematicDataV1
 import net.spaceeye.vmod.ELOG
+import net.spaceeye.vmod.rendering.RenderTypes
 import net.spaceeye.vmod.rendering.types.BaseRenderer
 import net.spaceeye.vmod.rendering.types.BlockRenderer
 import net.spaceeye.vmod.toolgun.VMToolgun
@@ -77,44 +74,8 @@ import org.joml.Vector3i
 import org.valkyrienskies.core.api.ships.Ship
 import org.valkyrienskies.core.api.ships.properties.ShipId
 import java.awt.Color
-import java.util.UUID
-import java.util.function.Consumer
-import java.util.Random
 import java.util.function.Supplier
 import kotlin.math.roundToInt
-
-//TODO optimize more
-//TODO won't work with sodium cuz it uses it's own buffer builder
-//fun maybeFasterVertexBuilder(buffer: VertexConsumer, x: Float, y: Float, z: Float, r: Byte, g: Byte, b: Byte, a: Byte, u: Float, v: Float, combinedOverlay: Int, lightmapUV: Int, normalX: Float, normalY: Float, normalZ: Float) {
-//    buffer as BufferBuilder
-//    buffer as BufferBuilderAccessor
-//
-//    buffer.putFloat(0, x)
-//    buffer.putFloat(4, y)
-//    buffer.putFloat(8, z)
-//    buffer.putByte(12, r)
-//    buffer.putByte(13, g)
-//    buffer.putByte(14, b)
-//    buffer.putByte(15, a)
-//    buffer.putFloat(16, u)
-//    buffer.putFloat(20, v)
-//    val i = if (buffer.`vmod$fullFormat`()) {
-//        buffer.putShort(24, (combinedOverlay and 0xffff).toShort())
-//        buffer.putShort(26, (combinedOverlay shr 16 and 0xffff).toShort())
-//        28
-//    } else { 24 }
-//
-//    buffer.putShort(i + 0, (lightmapUV and 0xffff).toShort())
-//    buffer.putShort(i + 2, (lightmapUV shr 16 and 0xffff).toShort())
-//    buffer.putByte(i + 4, BufferVertexConsumer.normalIntValue(normalX))
-//    buffer.putByte(i + 5, BufferVertexConsumer.normalIntValue(normalY))
-//    buffer.putByte(i + 6, BufferVertexConsumer.normalIntValue(normalZ))
-//
-//    buffer.`vmod$nextElementByte`(buffer.`vmod$nextElementByte`() + i + 8)
-//
-//    //not using endVertex to not call ensureCapacity
-//    buffer.`vmod$vertices`(buffer.`vmod$vertices`() + 1)
-//}
 
 class FakeLevel(
     val level: ClientLevel,
@@ -206,9 +167,9 @@ class FakeLevel(
     override fun getFluidTicks(): LevelTickAccess<Fluid?>? { throw AssertionError("Shouldn't be called")  }
 }
 
-//TODO is there a better way to do this?
-class FakeBufferBuilder(val source: SchemMultiBufferSource): VertexConsumer {
-    val vertices = mutableListOf<Vertex>()
+class CombinedBuffer(val source: SchemMultiBufferSource): VertexConsumer {
+    val buffer = BufferBuilder(512)
+    private var vertexBuffer: VertexBuffer? = null
 
     var defaultColor = Color(255, 255, 255, 255)
     var transparency = 0.5f
@@ -216,36 +177,27 @@ class FakeBufferBuilder(val source: SchemMultiBufferSource): VertexConsumer {
     var vertexOffset = org.joml.Vector3f(0f, 0f, 0f)
     var vertexMatrixIndex = 0
 
-    data class Vertex(var x: Float, var y: Float, var z: Float, var red: Float, var green: Float, var blue: Float, var alpha: Float, var texU: Float, var texV: Float, var overlayUV: Int, var lightmapUV: Int, var normalX: Float, var normalY: Float, var normalZ: Float, var matrixIndex: Int) {
-        fun apply(buffer: VertexConsumer, transparency: Float, matrices: List<org.joml.Matrix4f>) {
-            val matrix = matrices[matrixIndex]
-
-            var x_ = matrix.m00() * x + matrix.m10() * y + matrix.m20() * z + matrix.m30()
-            var y_ = matrix.m01() * x + matrix.m11() * y + matrix.m21() * z + matrix.m31()
-            var z_ = matrix.m02() * x + matrix.m12() * y + matrix.m22() * z + matrix.m32()
-
-            buffer.vertex(x_, y_, z_, red, green, blue, alpha * transparency, texU, texV, overlayUV, lightmapUV, normalX, normalY, normalZ)
-        }
-    }
-
     override fun vertex(x: Float, y: Float, z: Float, red: Float, green: Float, blue: Float, alpha: Float, texU: Float, texV: Float, overlayUV: Int, lightmapUV: Int, normalX: Float, normalY: Float, normalZ: Float) {
-        vertices.add(Vertex(x + vertexOffset.x, y + vertexOffset.y, z + vertexOffset.z, red, green, blue, alpha, texU, texV, overlayUV, lightmapUV, normalX, normalY, normalZ, vertexMatrixIndex))
+        buffer.vertex(x + vertexOffset.x, y + vertexOffset.y, z + vertexOffset.z, red, green, blue, alpha, texU, texV, overlayUV, lightmapUV, normalX, normalY, normalZ)
     }
 
     fun clear() {
-        vertices.clear()
+        buffer.clear()
+        vertexBuffer?.close()
         unsetDefaultColor()
     }
 
-    fun apply(buffer: VertexConsumer, matrices: List<org.joml.Matrix4f>) {
-        var i = 0
-        val size = vertices.size
-        while (i < size) {
-            vertices[i].apply(buffer, transparency, matrices)
-            i++
-        }
+    fun getVertexBuffer(): VertexBuffer {
+        val vertexBuffer = vertexBuffer ?: let { vertexBuffer = VertexBuffer(VertexBuffer.Usage.STATIC); vertexBuffer!! }
+        vertexBuffer.bind()
+
+        if (!buffer.building()) return vertexBuffer
+
+        vertexBuffer.upload(buffer.end())
+        return vertexBuffer
     }
 
+    data class Vertex(var x: Float, var y: Float, var z: Float, var red: Float, var green: Float, var blue: Float, var alpha: Float, var texU: Float, var texV: Float, var overlayUV: Int, var lightmapUV: Int, var normalX: Float, var normalY: Float, var normalZ: Float, var matrixIndex: Int)
     //liquid renderer uses this
     lateinit var temp: Vertex
     override fun vertex(x: Double, y: Double, z: Double): VertexConsumer? {
@@ -271,17 +223,19 @@ class FakeBufferBuilder(val source: SchemMultiBufferSource): VertexConsumer {
     override fun overlayCoords(u: Int, v: Int): VertexConsumer? { temp.overlayUV = (u shl 16) or (v and 0xFFFF);return this; }
     override fun uv2(u: Int, v: Int): VertexConsumer? { temp.lightmapUV = (u shl 16) or (v and 0xFFFF);return this; }
     override fun normal(x: Float, y: Float, z: Float): VertexConsumer? { temp.normalX = x;temp.normalY = y;temp.normalZ = z;return this; }
-    override fun endVertex() { vertices.add(temp) }
+    override fun endVertex() { buffer.vertex(temp.x, temp.y, temp.z, temp.red, temp.green, temp.blue, temp.alpha, temp.texU, temp.texV, temp.overlayUV, temp.lightmapUV, temp.normalX, temp.normalY, temp.normalZ) }
     override fun defaultColor(defaultR: Int, defaultG: Int, defaultB: Int, defaultA: Int) { defaultColor = Color(defaultR, defaultG, defaultB, defaultA) }
     override fun unsetDefaultColor() { defaultColor = Color(255, 255, 255, 255) }
 }
 
 class SchemMultiBufferSource: MultiBufferSource {
-    val buffers = mutableMapOf<RenderType,  FakeBufferBuilder>()
+    val buffers = mutableListOf<CombinedBuffer>()
     var transparency: Float = 0.5f
 
-    override fun getBuffer(renderType: RenderType): FakeBufferBuilder {
-        val buf = buffers.getOrPut(renderType) { FakeBufferBuilder(this) }
+    override fun getBuffer(renderType: RenderType): CombinedBuffer {
+        val buf = CombinedBuffer(this).also { buffers.add(it) }
+        //todo?
+        buf.buffer.begin(VertexFormat.Mode.QUADS, RenderTypes.VERTEX_FORMAT)
         buf.transparency = transparency
         return buf
     }
@@ -388,10 +342,16 @@ class SchematicRenderer(val schem: IShipSchematic, val transparency: Float, val 
             Matrix4f(poseStack.last().pose()).also { poseStack.popPose() }
         }
 
-        mySources.buffers.forEach { (type, buf) ->
-            val actualBuffer = sources.getBuffer(type)
-            buf.apply(actualBuffer, matrices)
+        RenderTypes.schematicBlock.setupRenderState()
+        mySources.buffers.forEach { buf ->
+            buf.getVertexBuffer()
+               .drawWithShader(
+                   matrices[buf.vertexMatrixIndex],
+                   RenderSystem.getProjectionMatrix(),
+                   RenderTypes.schematicBlock.shader
+               )
         }
+        RenderTypes.schematicBlock.clearRenderState()
 
         if (!renderBlockEntities) {return}
         val renderer = Minecraft.getInstance().blockEntityRenderDispatcher

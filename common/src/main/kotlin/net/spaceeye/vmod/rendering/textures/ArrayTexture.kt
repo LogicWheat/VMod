@@ -95,10 +95,10 @@ open class ArrayTexture(ptr: Long, val width: Int, val height: Int, val numLayer
     }
 
     fun innerDraw(pose: PoseStack, maxLayers: Int, currentLayer: Int, lu: Vector3d, ld: Vector3d, rd: Vector3d, ru: Vector3d, minU: Float, maxU: Float, minV: Float, maxV: Float) {
-        RenderTypes.TEXTURE_ARRAY_FULL.setupRenderState()
-        RenderTypes.textureArrayShader.getUniform("MaxLayers")!!.set(maxLayers)
-        RenderTypes.textureArrayShader.getUniform("CurrentLayer")!!.set(currentLayer)
-        RenderTypes.textureArrayShader.setSampler("texture_array", -1)
+        RenderTypes.textureArrayFull.setupRenderState()
+        RenderTypes.textureArrayFull.getUniform("MaxLayers")!!.set(maxLayers)
+        RenderTypes.textureArrayFull.getUniform("CurrentLayer")!!.set(currentLayer)
+        RenderTypes.textureArrayFull.setSampler("texture_array", -1)
 
         val matrix4f = pose.last().pose()
         val tesselator = Tesselator.getInstance()
@@ -107,6 +107,6 @@ open class ArrayTexture(ptr: Long, val width: Int, val height: Int, val numLayer
         RenderingUtils.Quad.drawQuad(bufferBuilder, matrix4f, 255, 255, 255, 255, 0, 0, lu, ld, rd, ru, minU, maxU, minV, maxV)
         tesselator.end()
 
-        RenderTypes.TEXTURE_ARRAY_FULL.clearRenderState()
+        RenderTypes.textureArrayFull.clearRenderState()
     }
 }

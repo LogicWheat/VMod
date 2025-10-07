@@ -22,8 +22,8 @@ class VModFabric : ModInitializer {
         EnvExecutor.runInEnv(Env.CLIENT) { Runnable {
             ClientCommandRegistrationCallback.EVENT.register { it, a -> VMClientCommands.registerClientCommands(it as CommandDispatcher<CommandSourceStack>) }
             CoreShaderRegistrationCallback.EVENT.register {
-                it.register(ResourceLocation(MOD_ID, "texture_array_full"), RenderTypes.VERTEX_FORMAT) {
-                    RenderTypes.textureArrayShader = it
+                for (state in RenderTypes.states) {
+                    it.register(ResourceLocation(MOD_ID, state.name), RenderTypes.VERTEX_FORMAT, state.shaderSetter)
                 }
             }
         } }

@@ -25,9 +25,10 @@ class VModForge {
         EnvExecutor.runInEnv(Env.CLIENT) { Runnable {
             MinecraftForge.EVENT_BUS.addListener<RegisterClientCommandsEvent> { VMClientCommands.registerClientCommands(it.dispatcher) }
             MinecraftForge.EVENT_BUS.addListener<RegisterShadersEvent> {
-                it.registerShader(ShaderInstance(it.resourceProvider, ResourceLocation(MOD_ID, "texture_array_full"), RenderTypes.VERTEX_FORMAT)) {
-                    RenderTypes.textureArrayShader = it
-                } }
+                for (state in RenderTypes.states) {
+                    it.registerShader(ShaderInstance(it.resourceProvider, ResourceLocation(MOD_ID, state.name), RenderTypes.VERTEX_FORMAT), state.shaderSetter)
+                }
+            }
         } }
     }
 }
