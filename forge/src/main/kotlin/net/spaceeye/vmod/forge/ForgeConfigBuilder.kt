@@ -7,7 +7,7 @@ import net.spaceeye.vmod.config.AbstractConfigBuilder
 import net.spaceeye.vmod.config.ConfigValueGetSet
 import kotlin.AssertionError
 
-class ForgeConfigBuilder: AbstractConfigBuilder() {
+class ForgeConfigBuilder(val name: String): AbstractConfigBuilder() {
     val BUILDER = ForgeConfigSpec.Builder()
     var SPEC: ForgeConfigSpec? = null
 
@@ -23,7 +23,7 @@ class ForgeConfigBuilder: AbstractConfigBuilder() {
             "common" -> ModConfig.Type.COMMON
             else -> throw AssertionError("Invalid config type $type")
         }
-        ModLoadingContext.get().registerConfig(type, SPEC, "vmod-$type.toml")
+        ModLoadingContext.get().registerConfig(type, SPEC, "$name-$type.toml")
     }
 
     override fun <T : Any> makeItem(name: String, defaultValue: T, description: String, range: Pair<T, T>?): ConfigValueGetSet {

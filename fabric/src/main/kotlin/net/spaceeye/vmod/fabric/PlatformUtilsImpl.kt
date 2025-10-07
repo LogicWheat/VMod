@@ -9,9 +9,9 @@ import net.spaceeye.vmod.config.AbstractConfigBuilder
 
 object PlatformUtilsImpl {
     @JvmStatic
-    fun getConfigBuilder(): AbstractConfigBuilder {
+    fun getConfigBuilder(name: String): AbstractConfigBuilder {
         if (Platform.isModLoaded("forgeconfigapiport")) {
-            return FabricConfigBuilder()
+            return FabricConfigBuilder(name)
         }
         WLOG("\"Forge Config API Port\" is not installed. Using dummy config builder.")
         return FabricDummyConfigBuilder()

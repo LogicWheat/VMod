@@ -85,17 +85,17 @@ object ConfigDelegateRegister {
     }
 
     fun initConfig() {
-        VMConfig.server_config_holder = PlatformUtils.getConfigBuilder()
+        VMConfig.server_config_holder = PlatformUtils.getConfigBuilder("vmod")
         VMConfig.server_config_holder.beginBuilding()
         reflectResolveConfigPaths(VMConfig.SERVER, "VModConfig", "VModConfig", VMConfig.server_config_holder)
         VMConfig.server_config_holder.finishBuilding("server")
 
-        VMConfig.client_config_holder = PlatformUtils.getConfigBuilder()
+        VMConfig.client_config_holder = PlatformUtils.getConfigBuilder("vmod")
         VMConfig.client_config_holder.beginBuilding()
         reflectResolveConfigPaths(VMConfig.CLIENT, "VModConfig", "VModConfig", VMConfig.client_config_holder)
         VMConfig.client_config_holder.finishBuilding("client")
 
-        VMConfig.common_config_holder = PlatformUtils.getConfigBuilder()
+        VMConfig.common_config_holder = PlatformUtils.getConfigBuilder("vmod")
         VMConfig.common_config_holder.beginBuilding()
         reflectResolveConfigPaths(VMConfig.COMMON, "VModConfig", "VModConfig", VMConfig.common_config_holder)
         VMConfig.common_config_holder.finishBuilding("common")

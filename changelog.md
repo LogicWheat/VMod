@@ -4,6 +4,7 @@
 * Added more config options for schematics
 * Sensor can now be placed in world and not just ships
 * Fixed "/vmod op clear-vmod-attachments" not working
+* Fixed Custom Mass not working correctly
 
 # 1.7.1
 * Fixed bug with "Open or Close Toolgun GUI" keybind stopping working sometimes

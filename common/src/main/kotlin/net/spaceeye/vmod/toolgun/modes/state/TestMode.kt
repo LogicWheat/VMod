@@ -30,9 +30,9 @@ class TestMode: ExtendableToolgunMode() {
     fun activatePrimaryFunction(level: ServerLevel, player: ServerPlayer, raycastResult: RaycastFunctions.RaycastResult)  {
         if (raycastResult.state.isAir) {return}
 
-        RenderingData.server.addRenderer(listOf(), ConeBlockRenderer(
-            raycastResult.worldHitPos!! + raycastResult.globalNormalDirection!! * 0.5, getQuatFromDir(raycastResult.worldNormalDirection!!), 1f, -1, Color(255, 255, 255, 255), true
-        ), level.dimensionId)
+//        RenderingData.server.addRenderer(listOf(), ConeBlockRenderer(
+//            raycastResult.worldHitPos!! + raycastResult.globalNormalDirection!! * 0.5, getQuatFromDir(raycastResult.worldNormalDirection!!), 1f, -1, Color(255, 255, 255, 255), true
+//        ), level.dimensionId)
 
         val ship = raycastResult.ship as? ServerShip ?: return
         val lship = level.shipObjectWorld.loadedShips.getById(ship.id)

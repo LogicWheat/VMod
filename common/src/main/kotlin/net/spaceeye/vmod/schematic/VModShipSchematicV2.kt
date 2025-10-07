@@ -63,7 +63,8 @@ class VModShipSchematicV2(): IShipSchematic, IShipSchematicDataV1, SchemSerializ
     override var info: IShipSchematicInfo? = null
 }
 
-private fun parseList(data: String): Set<Block> {
+fun parseList(data: String): Set<Block> {
+    if (data.isEmpty()) return emptySet()
     val lookup = BuiltInRegistries.BLOCK.asLookup()!!
 
     return data

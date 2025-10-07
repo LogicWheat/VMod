@@ -8,7 +8,7 @@ import net.spaceeye.vmod.config.AbstractConfigBuilder
 object PlatformUtils {
     @ExpectPlatform
     @JvmStatic
-    fun getConfigBuilder(): AbstractConfigBuilder = throw AssertionError()
+    fun getConfigBuilder(name: String): AbstractConfigBuilder = throw AssertionError()
 
     @ExpectPlatform
     @JvmStatic
