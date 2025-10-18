@@ -555,13 +555,13 @@ object SchematicActionsQueue: ServerClosable() {
                     var tick = 0
                     SessionEvents.serverOnTick.on { (server), unsubscribe ->
                         tick++
-                        if (tick > 2) {
-                            try {
-                                item!!.postPlacementFn(item.createdShips, item.centerPositions, item.entityCreationFn)
-                            } catch (e: Exception) { item?.settings?.logger?.error("Failed to call postPlacementFn with exception:\n${e.stackTraceToString()}")
-                            } catch (e: Error    ) { item?.settings?.logger?.error("Failed to call postPlacementFn with error:\n${e.stackTraceToString()}")}
-                            unsubscribe()
-                        }
+                        if (tick <= 10) return@on
+
+                        try {
+                            item!!.postPlacementFn(item.createdShips, item.centerPositions, item.entityCreationFn)
+                        } catch (e: Exception) { item?.settings?.logger?.error("Failed to call postPlacementFn with exception:\n${e.stackTraceToString()}")
+                        } catch (e: Error    ) { item?.settings?.logger?.error("Failed to call postPlacementFn with error:\n${e.stackTraceToString()}")}
+                        unsubscribe()
                     }
 
                     placeData.remove(placeLastKeys[placeLastPosition])

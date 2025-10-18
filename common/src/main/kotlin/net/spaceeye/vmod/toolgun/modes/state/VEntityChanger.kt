@@ -194,6 +194,7 @@ class VEntityChanger: ExtendableToolgunMode(), VEntityChangerHUD, VEntityChanger
     }
 
     fun entryConfirmation() {
+        cursorPos = max(min(cursorPos, clientVEntities.size-1), 0)
         Minecraft.getInstance().setScreen(VEntityChangerGui(clientVEntities[cursorPos].first, instance.client))
     }
 

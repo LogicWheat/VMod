@@ -67,8 +67,8 @@ object VMConfig {
         class Schematics: ConfigSubDirectory() {
             var TIMEOUT_TIME: Int by CInt(50, "No Comment", Pair(0, Int.MAX_VALUE))
 
-            var ALLOW_CHUNK_PLACEMENT_INTERRUPTION: Boolean by CBool(true, "Allows ships to be created over several ticks (so that if you have a huge ship it won't freeze server). May be incompatible with some mods though.")
-            var ALLOW_CHUNK_UPDATE_INTERRUPTION: Boolean by CBool(true, "Allows ships to be updated over several ticks (so that if you have a huge ship it won't freeze server). May be incompatible with some mods though.")
+            var ALLOW_CHUNK_PLACEMENT_INTERRUPTION: Boolean by CBool(false, "Allows ships to be created over several ticks (so that if you have a huge ship it won't freeze server). May be incompatible with some mods though.")
+            var ALLOW_CHUNK_UPDATE_INTERRUPTION: Boolean by CBool(false, "Allows ships to be updated over several ticks (so that if you have a huge ship it won't freeze server). May be incompatible with some mods though.")
             var LOAD_CONTAINERS: Boolean by CBool(true, "Determines whenever or not block entities implementing from Container (chests for example) will be loaded")
             var LOAD_ENTITIES: Boolean by CBool(true, "Determines whenever or not entities will be loaded")
             var BLACKLIST_MODE: Boolean by CBool(true, "If true, will load nbt of all block entities that are not in blacklist. If false, will only load nbt of whitelisted block entities")

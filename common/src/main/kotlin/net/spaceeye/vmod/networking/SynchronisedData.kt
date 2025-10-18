@@ -163,11 +163,13 @@ abstract class SynchronisedDataTransmitter<T: Serializable> (
     fun synchronizeUpdates() {
         if (dataUpdates.isEmpty()) {return}
         lock {
+            try {
             subscribersSavedChecksums.forEach { (sub, checksums) ->
                 val res = compileUpdateDataForSubscriber(dataUpdates, checksums) ?: return@forEach
                 trSynchronizeData.startSendingDataToReceiver(res, FakePacketContext((uuidToPlayer[sub] ?: return@forEach) as ServerPlayer))
             }
             dataUpdates.clear()
+            } catch (e: Exception) {ELOG(e.stackTraceToString())}
         }
     }
 

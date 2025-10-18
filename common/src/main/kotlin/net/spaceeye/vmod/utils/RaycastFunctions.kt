@@ -138,26 +138,41 @@ object RaycastFunctions {
         val aabbs = state.getCollisionShape(level, clipResult.blockPos).toAabbs()
 
         val result = aabbs
-            .mapNotNull { rayIntersectsBox(it.move(clipResult.blockPos), source.origin, (unitLookVec + eps).srdiv(1.0)).let { if (it.intersects) it else null } }
+            .mapNotNull { b -> rayIntersectsBox(b.move(clipResult.blockPos), source.origin, (unitLookVec + eps).srdiv(1.0)).let { if (it.intersects) it to b else null } }
             .let { when (it.isNotEmpty()) {
-                true  -> it.minBy { it.tToIn }
-                false -> rayIntersectsBox(AABB(bpos.x, bpos.y, bpos.z, bpos.x+1, bpos.y+1, bpos.z+1), source.origin, (unitLookVec + eps).srdiv(1.0))
+                true  -> it.minBy { it.first.tToIn }
+                false -> rayIntersectsBox(AABB(bpos.x, bpos.y, bpos.z, bpos.x+1, bpos.y+1, bpos.z+1), source.origin, (unitLookVec + eps).srdiv(1.0)) to AABB(0.0, 0.0, 0.0, 1.0, 1.0, 1.0)
             } }
 
         //todo idk
 //        val result = rayIntersectsBox(AABB(bpos.x, bpos.y, bpos.z, bpos.x+1, bpos.y+1, bpos.z+1), source.origin, (unitLookVec + eps).srdiv(1.0))
 //        var normal = calculateNormal(source.origin, unitLookVec, result, unitLookVec.dist())
         val normal = Vector3d(clipResult.direction.normal.x, clipResult.direction.normal.y, clipResult.direction.normal.z).abs()
+        val center = result.second.let { Vector3d(
+            (it.maxX - it.minX) / 2,
+            (it.maxY - it.minY) / 2,
+            (it.maxZ - it.minZ) / 2
+        ) }
 
-        val globalHitPos: Vector3d = source.origin + unitLookVec * (unitLookVec.dist() * result.tToIn)
+        val globalHitPos: Vector3d = source.origin + unitLookVec * (unitLookVec.dist() * result.first.tToIn)
         var worldHitPos = Vector3d(globalHitPos)
 
         val diff = globalHitPos - globalHitPos.floor()
         val offset = Vector3d(0, 0, 0)
         when {
-            normal.x > 0.5 -> offset.sadd(if (diff.x >= 0.5) {1.0} else {0.0}, 0.5, 0.5)
-            normal.y > 0.5 -> offset.sadd(0.5, if (diff.y >= 0.5) {1.0} else {0.0}, 0.5)
-            normal.z > 0.5 -> offset.sadd(0.5, 0.5, if (diff.z >= 0.5) {1.0} else {0.0})
+            normal.x > 0.5 -> offset.sadd(if (diff.x >= center.x) {center.x*2} else {0.0}, center.y, center.z)
+            normal.y > 0.5 -> offset.sadd(center.x, if (diff.y >= center.y) {center.y*2} else {0.0}, center.z)
+            normal.z > 0.5 -> offset.sadd(center.x, center.y, if (diff.z >= center.z) {center.z*2} else {0.0})
+        }
+        val voxelCenteredPos = globalHitPos.floor().sadd(offset.x, offset.y, offset.z)
+        var normalDirection = (voxelCenteredPos - bpos - center) * 2
+        val globalNormalDirection = Vector3d(normalDirection)
+
+        offset.set(0.0, 0.0, 0.0)
+        when {
+            normal.x > 0.5 -> offset.sadd(if (diff.x >= center.x) {center.x*2} else {0.0}, 0.5, 0.5)
+            normal.y > 0.5 -> offset.sadd(0.5, if (diff.y >= center.y) {center.y*2} else {0.0}, 0.5)
+            normal.z > 0.5 -> offset.sadd(0.5, 0.5, if (diff.z >= center.z) {center.z*2} else {0.0})
         }
         val globalCenteredHitPos = globalHitPos.floor().sadd(offset.x, offset.y, offset.z)
         var worldCenteredHitPos = Vector3d(globalCenteredHitPos)
@@ -166,9 +181,6 @@ object RaycastFunctions {
         val inBlockCenteredFaceHitPos = Vector3d(0.5, 0.5, 0.5) * (Vector3d(1, 1, 1) - normal.abs()) + inBlock * normal.abs()
         val globalCenteredFaceHitPos = bpos + inBlockCenteredFaceHitPos
         var worldCenteredFaceHitPos = globalCenteredFaceHitPos.copy()
-
-        var normalDirection = (globalCenteredHitPos - bpos - 0.5) * 2
-        val globalNormalDirection = Vector3d(normalDirection)
 
         if (ship != null) {
             normalDirection = transformShipToWorld(ship, normalDirection)

@@ -116,12 +116,14 @@ fun IShipSchematicDataV1.placeAt(
 
         for ((it, transform) in createdShips.zip(newTransforms)) {
             //TODO add ?: to nonfatal errors
-            val b = it.shipAABB ?: AABBi(0, 0, 0, 0, 0, 0)
-            var offset = MVector3d(it.transform.positionInModel) - MVector3d(
-                (b.maxX() - b.minX()) / 2.0 + b.minX(),
-                (b.maxY() - b.minY()) / 2.0 + b.minY(),
-                (b.maxZ() - b.minZ()) / 2.0 + b.minZ(),
-            )
+            var offset = it.shipAABB?.let { b ->
+                //positionInModel is wrong sometimes. why?????????????????????????????????
+                MVector3d(it.transform.positionInModel) - MVector3d(
+                    (b.maxX() - b.minX()) / 2.0 + b.minX(),
+                    (b.maxY() - b.minY()) / 2.0 + b.minY(),
+                    (b.maxZ() - b.minZ()) / 2.0 + b.minZ(),
+                )
+            } ?: MVector3d(0, 0, 0)
 
             offset = transformDirectionShipToWorld(transform, offset)
             // target position + rotated (contraption center - ship world pos) + (COM position - logical center)
