@@ -165,7 +165,7 @@ object RaycastFunctions {
             normal.z > 0.5 -> offset.sadd(center.x, center.y, if (diff.z >= center.z) {center.z*2} else {0.0})
         }
         val voxelCenteredPos = globalHitPos.floor().sadd(offset.x, offset.y, offset.z)
-        var normalDirection = (voxelCenteredPos - bpos - center) * 2
+        var normalDirection = ((voxelCenteredPos - bpos - center) * 2).normalize()
         val globalNormalDirection = Vector3d(normalDirection)
 
         offset.set(0.0, 0.0, 0.0)
