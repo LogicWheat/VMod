@@ -273,7 +273,7 @@ fun IShipSchematicDataV1.verifyBlockDataIsValid(
 ): Boolean {
     ids.forEach { id ->
         blockData[id] ?: run {
-            val str = "Ship ID exists not no block data was saved. Not placing a schematic."
+            val str = "Ship ID exists but no block data was saved. Not placing a schematic."
             player?.also { SELOG(str, player, str, false) } ?: run { ELOG(str) }
             return false
         }
