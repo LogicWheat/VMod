@@ -246,8 +246,9 @@ interface PlacementAssistClient {
 
         val shipObjectWorld = Minecraft.getInstance().shipObjectWorld
         paCaughtShips.forEach {
-            val ship = shipObjectWorld.allShips.getById(it)
-            ship?.transformProvider = CenteredAroundRotationAssistTransformProvider(ship.transformProvider as CenteredAroundPlacementAssistTransformProvider)
+            val ship = shipObjectWorld.allShips.getById(it) ?: return@forEach
+            if (ship.transformProvider !is CenteredAroundPlacementAssistTransformProvider) {paClientResetState(); return}
+            ship.transformProvider = CenteredAroundRotationAssistTransformProvider(ship.transformProvider as CenteredAroundPlacementAssistTransformProvider)
         }
     }
 

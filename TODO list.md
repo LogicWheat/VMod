@@ -1,7 +1,6 @@
 # VERY IMPORTANT
 
 * Rework permission level and player roles (not sure what i meant by that)
-* Extend config to schem
 * I don't think ventities will work correctly after being teleported to another dimension
 
 # Maybe
@@ -10,12 +9,18 @@
 * Mode to disable collisions for certain blocks (will need to mixin into shipAABB cuz blocks without collisions don't contribute to) (set type to type of air)
 * Think of smth to use blockless ships that have collision (set type to smth that is not air)
 
-* Redo GIFTexture
+* Add static mode to physgun
+* Add config menu to physgun for finetuning
 
 # Do Eventually
 
+* Redo GIFTexture
+* Remove usage of client transform providers with custom renderers
+* Clean up physgun code
+* Add snapping to physgun rotation
+
 * Add a way for addons to add their own client/server settings
-* Patchouli guide book
+* Finish Patchouli guide book
 
 # Gravity Changer
 * rework saving/loading
