@@ -43,7 +43,7 @@ class ConnectionMode: ExtendableToolgunMode(), ConnectionGUI, ConnectionHUD {
     var fullbright: Boolean by get(i++, false).presettable()
 
     var fixedDistance: Float by get(i++, -1.0f) { ServerLimits.instance.fixedDistance.get(it) }.presettable()
-    var connectionMode: ConnectionConstraint.ConnectionModes by get(i++, ConnectionConstraint.ConnectionModes.FIXED_ORIENTATION).presettable()
+    var connectionMode: ConnectionConstraint.ConnectionModes by get(i++, ConnectionConstraint.ConnectionModes.FIXED_ORIENTATION).presettable().onClientChange { refreshHUD() }
     var primaryFirstRaycast: Boolean by get(i++, false)
 
 
@@ -65,11 +65,11 @@ class ConnectionMode: ExtendableToolgunMode(), ConnectionGUI, ConnectionHUD {
             Quaterniond(ship1?.transform?.shipToWorldRotation ?: Quaterniond()),
             Quaterniond(ship2?.transform?.shipToWorldRotation ?: Quaterniond()),
             shipId1, shipId2, maxForce, stiffness, damping, distance, connectionMode
-        ).addExtension(RenderableExtension(A2BRenderer(
+        ).addExtension(RenderableExtension(A2BRendererAnimated(
             ship1?.id ?: -1L,
             ship2?.id ?: -1L,
             spoint1, spoint2,
-            color, width, fullbright, RenderingUtils.whiteTexture
+            color, width, fullbright, ResourceLocation(MOD_ID, "textures/gif/test_gif3.gif")
         ))).addExtension(Strippable())){it.addForVMod(player)}
 
         resetState()

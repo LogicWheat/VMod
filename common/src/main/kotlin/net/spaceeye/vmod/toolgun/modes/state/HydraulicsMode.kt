@@ -44,7 +44,7 @@ class HydraulicsMode: ExtendableToolgunMode(), HydraulicsGUI, HydraulicsHUD {
     var fullbright: Boolean by get(i++, false).presettable()
 
     var fixedMinLength: Float by get(i++, -1f) { ServerLimits.instance.fixedDistance.get(it) }.presettable()
-    var connectionMode: HydraulicsConstraint.ConnectionMode by get(i++, HydraulicsConstraint.ConnectionMode.FIXED_ORIENTATION).presettable()
+    var connectionMode: HydraulicsConstraint.ConnectionMode by get(i++, HydraulicsConstraint.ConnectionMode.FIXED_ORIENTATION).presettable().onClientChange { refreshHUD() }
 
     var extensionDistance: Float by get(i++, 5f) { ServerLimits.instance.extensionDistance.get(it) }.presettable()
     var extensionSpeed: Float by get(i++, 1f) { ServerLimits.instance.extensionSpeed.get(it) }.presettable()

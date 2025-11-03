@@ -102,6 +102,7 @@
   "vmod.gui.text.common_hud_3": "Look at the target and press RMB again",
   "vmod.gui.text.common_hud_4": "Configure rotation with mouse wheel, press RMB to confirm",
   "vmod.gui.text.common_hud_5": "LMB - main mode",
+  "vmod.gui.text.common_hud_6": "LMB - main mode, RMB - secondary mode",
   "vmod.gui.text.disable_collisions_hud_1": "LMB to disable collisions, RMB to enable all collisions",
   "vmod.gui.text.scale_hud_1": "LMB - scale ship/s",
   "vmod.gui.text.schem_hud_1": "LMB - create schematic from ship",

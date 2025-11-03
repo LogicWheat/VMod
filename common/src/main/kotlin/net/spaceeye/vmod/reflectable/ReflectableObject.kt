@@ -33,8 +33,8 @@ open class ReflectableItemDelegate <T : Any>(
         return "[Name: $cachedName | Item: $it | Pos: $reflectionPos | Set wrapper: ${setWrapper != null} | Get wrapper: ${getWrapper != null} | Metadata: $metadata]"
     }
 
-    fun setSetWrapper(fn: (old: T, new:T) -> T): ReflectableItemDelegate<T> { setWrapper = fn; return this }
-    fun setGetWrapper(fn: (value: T) -> T): ReflectableItemDelegate<T> { getWrapper = fn; return this }
+    fun setSetWrapper(fn: (old: T, new:T) -> T): ReflectableItemDelegate<T> { setWrapper = setWrapper?.let { oldWrapper -> { old:T, new:T -> fn(old, oldWrapper(old, new)) } } ?: fn;return this }
+    fun setGetWrapper(fn: (value: T) -> T): ReflectableItemDelegate<T> { getWrapper = getWrapper?.let { oldWrapper -> { value:T -> fn(oldWrapper(value)) } } ?: fn;return this }
 }
 
 //TODO add explanation

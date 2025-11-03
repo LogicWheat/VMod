@@ -148,6 +148,7 @@ val COMMON_HUD_2 = x("LMB on the other ship or the ground", "common_hud_2")
 val COMMON_HUD_3 = x("Look at the target and press RMB again", "common_hud_3")
 val COMMON_HUD_4 = x("Configure rotation with mouse wheel, press RMB to confirm", "common_hud_4")
 val COMMON_HUD_5 = x("LMB - main mode", "common_hud_5")
+val COMMON_HUD_6 = x("LMB - main mode, RMB - secondary mode", "common_hud_6")
 
 val DISABLE_COLLISIONS_HUD_1 = x("LMB to disable collisions, RMB to enable all collisions", "disable_collisions_hud_1")
 val SCALE_HUD_1 = x("LMB - scale ship/s", "scale_hud_1")

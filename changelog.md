@@ -2,12 +2,14 @@
 * Added function "/vmod op prune-shipyard-chunks" to delete chunks of deleted ships
 * Added automatic region cleanup on ship deletion
 * Added more config options for schematics
+* Added WIP guide book
 * Improved logic of 2 "Hitpos Modes" (Centered On Side, Precise Placement) and "Placement Assist"
 * Changed defaults of ALLOW_CHUNK_PLACEMENT_INTERRUPTION and ALLOW_CHUNK_UPDATE_INTERRUPTION to false (you should probably change them to false too in the server config)
 * Sensor can now be placed in world and not just ships
 * Fixed "/vmod op clear-vmod-attachments" not working
 * Fixed Custom Mass not working correctly
 * Fixed VEntityChanger crashing sometimes
+* Fixed "MMB - join mode" being always visible in "Connection" and "Hydraulics" modes when it can only be used with "Bearing" mode chosen
 
 # 1.7.1
 * Fixed bug with "Open or Close Toolgun GUI" keybind stopping working sometimes
