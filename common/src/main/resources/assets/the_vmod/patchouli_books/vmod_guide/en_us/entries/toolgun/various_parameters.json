@@ -1,7 +1,7 @@
 {
-  "id": "toolgun_modes/various_parameters",
+  "id": "toolgun/various_parameters",
   "icon": "minecraft:book",
-  "category": "the_vmod:toolgun_modes",
+  "category": "the_vmod:toolgun",
   "name": "Various Parameters",
   "sortnum": 0,
   "pages": [

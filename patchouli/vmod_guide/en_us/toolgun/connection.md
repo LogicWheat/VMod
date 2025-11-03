@@ -1,5 +1,5 @@
 {.e_sortnum 1}
-# Connection
+# Connection Mode
 This mode creates a connection (fixed/bearing/free) between 2 objects.
 
 Fixed mode fixes both rotations and distance between hit points
