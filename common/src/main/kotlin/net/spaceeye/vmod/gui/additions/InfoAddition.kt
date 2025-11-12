@@ -59,6 +59,7 @@ class InfoAddition: ScreenWindowAddition() {
         PersistentEvents.keyPress.on {
             (keyCode, scanCode, action, modifiers), _ ->
             if (!instance.client.playerIsUsingToolgun()) return@on false
+            if (instance.client.guiIsOpened()) return@on false
 
             val isPressed = action == GLFW.GLFW_PRESS
 
@@ -81,7 +82,7 @@ class InfoAddition: ScreenWindowAddition() {
     }
 
     override fun onRenderHUD(stack: PoseStack, delta: Float) {
-        if (!render || !instance.client.playerIsUsingToolgun()) {
+        if (!render || !instance.client.playerIsUsingToolgun() || instance.client.guiIsOpened()) {
             infoContainer.hide()
             return
         }
@@ -114,6 +115,7 @@ class InfoAddition: ScreenWindowAddition() {
 
         if (lastShipId == rr.shipId && (getNow_ms() - lastUpdate < 1000L)) { return }
 
+        lastUpdate = getNow_ms()
         lastShipId = rr.shipId
         queryShipId = rr.shipId
 
@@ -192,6 +194,7 @@ object InfoAdditionNetworking: ServersideNetworking {
 
             val customMassSave = CustomMassSave.getOrCreate(ship)
             val changedMassData = customMassSave.massSave
+            //TODO this is very bad
             val originalMass = changedMassData?.let {
                 it.fold(ship.inertiaData.mass) { mass, (pos, new) ->
                     val state = level.getBlockState(pos.toBlockPos())

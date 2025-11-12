@@ -78,14 +78,14 @@ open class ClientToolGunState(
             PersistentEvents.keyPress.on {
                     (keyCode, scanCode, action, modifiers), _ ->
                 if (!playerIsUsingToolgun()) {return@on false}
-                if (Minecraft.getInstance().screen != null && !toolgunGuiIsOpened()) {return@on false}
+                if (guiIsOpened() && !toolgunGuiIsOpened()) {return@on false}
 
                 val guiIsOpened = toolgunGuiIsOpened()
                 val isPressed = action == GLFW.GLFW_PRESS
                 val focused = TextEntry.focused
 
-                // we do it like this because we need for toolgun to handle keys first to prevent
-                // user from opening menu or smth in the middle of using some mode
+                // toolgun needs to handle keys first to prevent user from opening toolgun menu
+                // in the middle of using some mode
                 if (!guiIsOpened) {
                     val cancel = handleKeyEvent(keyCode, scanCode, action, modifiers)
                     if (cancel) {return@on true}
@@ -184,6 +184,7 @@ open class ClientToolGunState(
 
     protected open lateinit var gui: MainToolgunGUIWindow
 
+    var guiIsOpened: () -> Boolean = {Minecraft.getInstance().screen != null}
     var toolgunGuiIsOpened: () -> Boolean = {Minecraft.getInstance().screen.let { it is MainToolgunGUIWindow || it is VEntityChangerGui }}
     var playerIsUsingToolgun: () -> Boolean = {Minecraft.getInstance().player?.mainHandItem?.item == VMItems.TOOLGUN.get()}
 
