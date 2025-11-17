@@ -125,7 +125,7 @@ class InfoAddition: ScreenWindowAddition() {
             mass            .setText("Mass: ${it.mass}")
             gravity         .setText("Gravity: ${it.gravity}")
             customMass      .setText("Has custom mass: ${it.customMass}")
-            originalMass    .setText("Original mass: ${it.originalMass}")
+            originalMass.hide()//originalMass    .setText("Original mass: ${it.originalMass}")
             numVSConstraints.setText("Num VS Constraints: ${it.numVSConstraints}")
             numVEntities    .setText("Num VEntities: ${it.numVEntities}")
 
@@ -195,21 +195,21 @@ object InfoAdditionNetworking: ServersideNetworking {
             val customMassSave = CustomMassSave.getOrCreate(ship)
             val changedMassData = customMassSave.massSave
             //TODO this is very bad
-            val originalMass = changedMassData?.let {
-                it.fold(ship.inertiaData.mass) { mass, (pos, new) ->
-                    val state = level.getBlockState(pos.toBlockPos())
-                    val (defaultMass, _) = BlockStateInfo.get(state)!!
-
-                    mass - new + defaultMass
-                }
-            } ?: ship.inertiaData.mass
+//            val originalMass = changedMassData?.let {
+//                it.fold(ship.inertiaData.mass) { mass, (pos, new) ->
+//                    val state = level.getBlockState(pos.toBlockPos())
+//                    val (defaultMass, _) = BlockStateInfo.get(state)!!
+//
+//                    mass - new + defaultMass
+//                }
+//            } ?: ship.inertiaData.mass
 
             s2cShipInfoQueryResponse.sendToClient(player, S2CShipInfoQueryResponse(
                 pkt.shipId,
                 ship.inertiaData.mass,
                 GravityController.getOrCreate(ship).effectiveGravity(),
                 changedMassData != null,
-                originalMass,
+                0.0,//originalMass,
                 VSJointsTracker.getIdsOfShip(ship.id).size,
                 level.getAllVEntityIdsOfShipId(ship.id).size
             ))

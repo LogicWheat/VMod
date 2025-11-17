@@ -3,6 +3,7 @@
 * Added automatic region cleanup on ship deletion
 * Added more config options for schematics
 * Added WIP guide book
+* Removed "Original Weight" from info window
 * Improved logic of 2 "Hitpos Modes" (Centered On Side, Precise Placement) and "Placement Assist"
 * Changed defaults of ALLOW_CHUNK_PLACEMENT_INTERRUPTION and ALLOW_CHUNK_UPDATE_INTERRUPTION to false (you should probably change them to false too in the server config)
 * Sensor can now be placed in world and not just ships

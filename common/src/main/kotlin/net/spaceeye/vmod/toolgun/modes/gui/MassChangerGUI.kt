@@ -1,6 +1,8 @@
 package net.spaceeye.vmod.toolgun.modes.gui
 
 import gg.essential.elementa.components.UIContainer
+import gg.essential.elementa.dsl.constrain
+import gg.essential.elementa.dsl.percent
 import net.spaceeye.vmod.guiElements.makeCheckBox
 import net.spaceeye.vmod.guiElements.makeText
 import net.spaceeye.vmod.guiElements.makeTextEntry
@@ -25,6 +27,7 @@ interface MassChangerGUI: GUIBuilder, EGUIBuilder {
         val massPerBlock = makeTextEntry(MASS_PER_BLOCK.get(), ::massPerBlock, 2f, 2f, parentWindow, ServerLimits.instance.massPerBlock)
 
         val theWarning = makeText(MASS_CHANGER_IS_DANGEROUS.get(), Color.red, 2f, 2f, parentWindow)
+        theWarning.constraints.width = 98.percent
         val totalMass = makeTextEntry(NEW_TOTAL_MASS.get(), ::newMass, 2f, 2f, parentWindow, ServerLimits.instance.massLimit)
 
         updateGuiFn = {

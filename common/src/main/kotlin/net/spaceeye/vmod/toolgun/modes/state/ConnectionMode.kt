@@ -65,11 +65,11 @@ class ConnectionMode: ExtendableToolgunMode(), ConnectionGUI, ConnectionHUD {
             Quaterniond(ship1?.transform?.shipToWorldRotation ?: Quaterniond()),
             Quaterniond(ship2?.transform?.shipToWorldRotation ?: Quaterniond()),
             shipId1, shipId2, maxForce, stiffness, damping, distance, connectionMode
-        ).addExtension(RenderableExtension(A2BRendererAnimated(
+        ).addExtension(RenderableExtension(A2BRenderer(
             ship1?.id ?: -1L,
             ship2?.id ?: -1L,
             spoint1, spoint2,
-            color, width, fullbright, ResourceLocation(MOD_ID, "textures/gif/test_gif3.gif")
+            color, width, fullbright, RenderingUtils.whiteTexture
         ))).addExtension(Strippable())){it.addForVMod(player)}
 
         resetState()
