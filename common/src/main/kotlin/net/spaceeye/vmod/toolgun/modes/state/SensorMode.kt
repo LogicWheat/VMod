@@ -4,15 +4,16 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.Level
+import net.spaceeye.vmod.VMBlocks
 import net.spaceeye.vmod.vEntityManaging.*
 import net.spaceeye.vmod.vEntityManaging.extensions.RenderableExtension
 import net.spaceeye.vmod.vEntityManaging.extensions.Strippable
 import net.spaceeye.vmod.vEntityManaging.types.entities.SensorVEntity
 import net.spaceeye.vmod.limits.ServerLimits
-import net.spaceeye.vmod.rendering.types.ConeBlockRenderer
 import net.spaceeye.vmod.toolgun.modes.util.PositionModes
 import net.spaceeye.vmod.toolgun.modes.util.getModePosition
 import net.spaceeye.vmod.reflectable.ByteSerializableItem.get
+import net.spaceeye.vmod.rendering.types.BlockStateRenderer
 import net.spaceeye.vmod.toolgun.gui.Presettable
 import net.spaceeye.vmod.toolgun.gui.Presettable.Companion.presettable
 import net.spaceeye.vmod.toolgun.modes.ExtendableToolgunMode
@@ -54,8 +55,8 @@ class SensorMode: ExtendableToolgunMode(), SensorGUI, SensorHUD {
             basePos,
             raycastResult.globalNormalDirection!!,
             maxDistance, ignoreSelf, scale, channel
-        ).addExtension(RenderableExtension(ConeBlockRenderer(
-            basePos, getQuatFromDir(raycastResult.globalNormalDirection!!), scale.toFloat(), ship?.id ?: -1, Color(0, 255, 0), fullbright
+        ).addExtension(RenderableExtension(BlockStateRenderer(
+            basePos, getQuatFromDir(raycastResult.globalNormalDirection!!), scale.toFloat(), ship?.id ?: -1, Color(0, 255, 0), fullbright, VMBlocks.CONE_THRUSTER.get().defaultBlockState()
         ))).addExtension(Strippable())){it.addForVMod(player)}
     }
 

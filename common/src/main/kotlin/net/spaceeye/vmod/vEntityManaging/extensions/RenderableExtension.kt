@@ -56,6 +56,7 @@ open class RenderableExtension(): VEntityExtension {
             val type = tag.getString("rendererType")
             renderer = RenderingTypes.strTypeToSupplier(type).get()
             (renderer as ReflectableObject).tDeserialize(tag.getCompound("renderer"))
+            renderer = renderer.tryUpdate()
         } catch (e: Exception) { ELOG("FAILED TO DESERIALIZE RENDERER WITH EXCEPTION\n${e.stackTraceToString()}"); return false
         } catch (e: Error) { ELOG("FAILED TO DESERIALIZE RENDERER WITH ERROR\n${e.stackTraceToString()}"); return false}
 

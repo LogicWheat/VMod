@@ -3,9 +3,8 @@ package net.spaceeye.vmod.rendering
 import dev.architectury.platform.Platform
 import dev.architectury.utils.Env
 import net.spaceeye.vmod.rendering.types.*
-import net.spaceeye.vmod.rendering.types.TimedA2BRenderer
-import net.spaceeye.vmod.rendering.types.debug.DebugPointRenderer
-import net.spaceeye.vmod.rendering.types.debug.RainbowRenderer
+import net.spaceeye.vmod.rendering.types.debug.*
+import net.spaceeye.vmod.rendering.types.deprecated.*
 import net.spaceeye.vmod.utils.Registry
 import kotlin.reflect.KClass
 
@@ -17,7 +16,7 @@ object RenderingTypes: Registry<BaseRenderer>(false) {
         register(A2BRenderer::class)
         register(TimedA2BRenderer::class)
         register(PhysRopeRenderer::class)
-        register(ConeBlockRenderer::class)
+        register(BlockStateRenderer::class)
         register(PhysgunRayRenderer::class)
         register(TubeRopeRenderer::class)
         register(PhysEntityBlockRenderer::class)
@@ -25,6 +24,9 @@ object RenderingTypes: Registry<BaseRenderer>(false) {
 
         register(DebugPointRenderer::class)
         register(RainbowRenderer::class)
+
+        @Suppress("DEPRECATION_ERROR")
+        register(ConeBlockRenderer::class)
     }
     @JvmStatic fun BaseRenderer.getType() = typeToString(this::class.java)
 }

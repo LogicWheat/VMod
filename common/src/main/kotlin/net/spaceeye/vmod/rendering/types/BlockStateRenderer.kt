@@ -9,9 +9,12 @@ import net.minecraft.client.renderer.GameRenderer
 import net.minecraft.client.renderer.LightTexture
 import net.minecraft.client.renderer.MultiBufferSource
 import net.minecraft.client.renderer.texture.OverlayTexture
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.nbt.CompoundTag
+import net.minecraft.nbt.NbtUtils
 import net.minecraft.network.FriendlyByteBuf
 import net.minecraft.world.level.LightLayer
-import net.spaceeye.vmod.VMBlocks
+import net.minecraft.world.level.block.state.BlockState
 import net.spaceeye.vmod.limits.ClientLimits
 import net.spaceeye.vmod.reflectable.AutoSerializable
 import net.spaceeye.vmod.reflectable.ByteSerializableItem.get
@@ -29,13 +32,8 @@ import org.valkyrienskies.mod.common.getShipManagingPos
 import org.valkyrienskies.mod.common.util.toFloat
 import java.awt.Color
 
-
-object A {
-    val testState = VMBlocks.CONE_THRUSTER.get().defaultBlockState()
-}
-
-class ConeBlockRenderer(): BlockRenderer(), ReflectableObject, PositionDependentRenderer {
-    private class Data: AutoSerializable {
+class BlockStateRenderer(): BlockRenderer(), ReflectableObject, PositionDependentRenderer {
+    private class Data(inst: BlockStateRenderer): AutoSerializable {
         @JsonIgnore
         private var i = 0
 
@@ -45,12 +43,19 @@ class ConeBlockRenderer(): BlockRenderer(), ReflectableObject, PositionDependent
         var scale: Float by get(i++, 1.0f, true) { ClientLimits.instance.blockRendererScale.get(it) }
         var color: Color by get(i++, Color(255, 255, 255))
         var fullbright: Boolean by get(i++, false, true) { ClientLimits.instance.lightingMode.get(it) }
+        var stateTag: CompoundTag by get(i++, CompoundTag()).setSetWrapper { old, new ->
+            val lookup = BuiltInRegistries.BLOCK.asLookup()
+            inst.state = try { NbtUtils.readBlockState(lookup, new) } catch (e: Exception) { null }
+            new
+        }
     }
-    private var data = Data()
+    private var data = Data(this)
     override val reflectObjectOverride: ReflectableObject? get() = data
     override fun serialize() = data.serialize()
     override fun deserialize(buf: FriendlyByteBuf) { data.deserialize(buf) }
     override val renderingPosition: Vector3d get() = data.pos
+
+    var state: BlockState? = null
 
     constructor(
         pos: Vector3d,
@@ -58,7 +63,8 @@ class ConeBlockRenderer(): BlockRenderer(), ReflectableObject, PositionDependent
         scale: Float,
         shipId: ShipId,
         color: Color = Color(255, 255, 255),
-        fullbright: Boolean
+        fullbright: Boolean,
+        stateTag: CompoundTag
     ): this() { with(data) {
         this.pos = pos
         this.rot = rot
@@ -66,6 +72,25 @@ class ConeBlockRenderer(): BlockRenderer(), ReflectableObject, PositionDependent
         this.shipId = shipId
         this.color = color
         this.fullbright = fullbright
+        this.stateTag = stateTag
+    } }
+
+    constructor(
+        pos: Vector3d,
+        rot: Quaterniond,
+        scale: Float,
+        shipId: ShipId,
+        color: Color = Color(255, 255, 255),
+        fullbright: Boolean,
+        state: BlockState
+    ): this() { with(data) {
+        this.pos = pos
+        this.rot = rot
+        this.scale = scale
+        this.shipId = shipId
+        this.color = color
+        this.fullbright = fullbright
+        this.stateTag = NbtUtils.writeBlockState(state)
     } }
 
     private var highlightTimestamp = 0L
@@ -81,6 +106,7 @@ class ConeBlockRenderer(): BlockRenderer(), ReflectableObject, PositionDependent
     override fun renderBlockData(poseStack: PoseStack, camera: Camera, buffer: MultiBufferSource, timestamp: Long) = with(data) {
         val level = Minecraft.getInstance().level!!
         val scale = scale
+        val state = state ?: return@with
 
         RenderSystem.enableDepthTest()
         RenderSystem.depthFunc(GL11.GL_LEQUAL)
@@ -110,14 +136,14 @@ class ConeBlockRenderer(): BlockRenderer(), ReflectableObject, PositionDependent
         val light = if (fullbright) LightTexture.FULL_BRIGHT else rpoint.toBlockPos().let { LightTexture.pack(level.getBrightness(LightLayer.BLOCK, it), level.getBrightness(LightLayer.SKY, it)) }
         val combinedOverlayIn = OverlayTexture.NO_OVERLAY
 
-        RenderingStuff.renderSingleBlock(A.testState, poseStack, buffer, light, combinedOverlayIn, if (timestamp < highlightTimestamp || renderingTick < highlightTick) Color(255, 0, 0) else color)
+        RenderingStuff.renderSingleBlock(state, poseStack, buffer, light, combinedOverlayIn, if (timestamp < highlightTimestamp || renderingTick < highlightTick) Color(255, 0, 0) else color)
 
         poseStack.popPose()
     }
 
     override fun copy(oldToNew: Map<ShipId, Ship>, centerPositions: Map<ShipId, Pair<Vector3d, Vector3d>>): BaseRenderer? = with(data) {
         val spoint = centerPositions[shipId]!!.let { (old, new) -> updatePosition(pos, old, new)}
-        return ConeBlockRenderer(spoint, Quaterniond(rot), scale, oldToNew[shipId]!!.id, color, fullbright)
+        return BlockStateRenderer(spoint, Quaterniond(rot), scale, oldToNew[shipId]!!.id, color, fullbright, stateTag)
     }
 
     override fun scaleBy(by: Double) = with(data) {

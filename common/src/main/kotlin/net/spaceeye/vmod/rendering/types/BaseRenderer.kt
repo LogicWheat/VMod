@@ -17,6 +17,8 @@ abstract class BaseRenderer: Serializable {
     abstract fun scaleBy(by: Double)
     open fun highlightUntil(until: Long) { ELOG("How did you do that? ${Exception().stackTraceToString()}") }
     open fun highlightUntilRenderingTicks(until: Long) { ELOG("How did you do that? ${Exception().stackTraceToString()}") }
+
+    open fun tryUpdate(): BaseRenderer = this
 }
 
 abstract class BlockRenderer: BaseRenderer() {

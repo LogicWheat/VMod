@@ -33,7 +33,6 @@
 * Group rendering objects by types to elevate common operations and add shared data between rendering types
 * Fix rendering when i modify rendering transform of ships and player stands on the ship (VS2 moves camera when player stands on the ship) 
 * Redo how normal renderers and block renderers work
-* Redo ConeBlockRenderer into a more general version
 
 ## Constraint disabler
 * An extension that will enable/disable it when signal is given
