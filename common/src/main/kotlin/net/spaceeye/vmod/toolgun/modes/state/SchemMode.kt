@@ -102,7 +102,7 @@ object PlayerSchematics: ServerClosable() {
             VMToolgun.client.currentMode?.let {
                 if (it !is SchemMode) {return@let}
                 it.schem = bcGetSchematicFromBytes(data.data.array())
-                it.saveSchem(listSchematics())
+                SchemMode.saveSchem(listSchematics(), it.filename, it.schem!!)
                 it.reloadScrollItems()
             }
         }
@@ -266,16 +266,6 @@ class SchemMode: ExtendableToolgunMode(), SchemGUI, SchemHUD {
         SchemNetworking.init(this, type)
     }
 
-    fun saveSchem(items: List<Path>) {
-        var name = filename
-        val names = items.map { it.fileName.toString() }
-
-        while (names.contains(name + ".${SCHEM_EXTENSION}")) { name += "_" }
-        if (!name.endsWith(".${SCHEM_EXTENSION}")) { name += ".${SCHEM_EXTENSION}" }
-
-        PlayerSchematics.saveSchematic(name, schem!!)
-    }
-
     var renderer: BaseRenderer? = null
 
     private var rID = -1
@@ -369,6 +359,16 @@ class SchemMode: ExtendableToolgunMode(), SchemGUI, SchemHUD {
                     )
                 }
             }
+        }
+
+        fun saveSchem(items: List<Path>, filename: String, schem: IShipSchematic) {
+            var name = filename
+            val names = items.map { it.fileName.toString() }
+
+            while (names.contains(name + ".${SCHEM_EXTENSION}")) { name += "_" }
+            if (!name.endsWith(".${SCHEM_EXTENSION}")) { name += ".${SCHEM_EXTENSION}" }
+
+            PlayerSchematics.saveSchematic(name, schem)
         }
     }
 }
