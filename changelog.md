@@ -1,4 +1,4 @@
-# Next
+# 1.8.0
 * Added function "/vmod op prune-shipyard-chunks" to delete chunks of deleted ships
 * Added automatic region cleanup on ship deletion
 * Added more config options for schematics
