@@ -15,9 +15,7 @@
     "Normal"
   ],
   "samplers": [
-    { "name": "texture_array" },
-    { "name": "Sampler1" },
-    { "name": "Sampler2" }
+    { "name": "texture_array" }
   ],
   "uniforms": [
     { "name": "MaxLayers", "type": "int", "count": 1, "values": [ 1 ] },

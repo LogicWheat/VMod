@@ -35,6 +35,7 @@ import net.spaceeye.vmod.toolgun.*
 import net.spaceeye.vmod.toolgun.clientSettings.ClientSettingsTypes
 import net.spaceeye.vmod.toolgun.modes.ToolgunModes
 import net.spaceeye.vmod.toolgun.serverSettings.ServerSettingsTypes
+import net.spaceeye.vmod.translate.makeFake
 import net.spaceeye.vmod.utils.ServerObjectsHolder
 import net.spaceeye.vmod.utils.closeClientObjects
 import net.spaceeye.vmod.utils.closeServerObjects
@@ -54,6 +55,7 @@ fun ELOG(s: String) = VM.logger.error(s)
 
 const val MOD_ID = "the_vmod"
 
+//TODO move this somewhere else
 var GLMaxArrayTextureLayers: Int = -1
     get() {
         if (field != -1) return field
@@ -73,6 +75,12 @@ object VM {
             EnvExecutor.runInEnv(Env.CLIENT) { Runnable {
                 ClientBookRegistry.INSTANCE.pageTypes.put(ResourceLocation(net.spaceeye.vmod.MOD_ID, "gif_page"), PageGIF::class.java)
             } }
+        } else if (!VMConfig.CLIENT.SHUT_UP) {
+            PersistentEvents.clientOnTick.on { (minecraft), unsub ->
+                val player = minecraft.player ?: return@on
+                unsub()
+                player.sendSystemMessage(makeFake("[Vmod]: Install Patchouli for a guide book! (You can disable this message in client config)"))
+            }
         }
 
         EnvExecutor.runInEnv(Env.CLIENT) { Runnable {

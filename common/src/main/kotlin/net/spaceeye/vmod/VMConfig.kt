@@ -15,6 +15,8 @@ object VMConfig {
         val TOOLGUN = ClientToolgunSettings()
         val RENDERING = ClientRenderingSettings()
 
+        val SHUT_UP: Boolean by CBool(false, "Disable patchouli notification")
+
         class ClientToolgunSettings: ConfigSubDirectory() {
             var MAX_RAYCAST_DISTANCE: Double by CDouble(100.0, "", Pair(1.0, Double.MAX_VALUE))
 
