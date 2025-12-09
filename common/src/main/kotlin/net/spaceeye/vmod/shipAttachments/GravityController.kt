@@ -4,19 +4,14 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.fasterxml.jackson.annotation.JsonValue
-import com.fasterxml.jackson.databind.JsonSerializer
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.annotation.JsonSerialize
-import net.spaceeye.vmod.compat.vsBackwardsCompat.mass
-import net.spaceeye.vmod.utils.JVector3d
 import net.spaceeye.vmod.utils.Vector3d
 import net.spaceeye.vmod.vsStuff.VSGravityManager
-import net.spaceeye.vmod.compat.vsBackwardsCompat.getAttachment
 import net.spaceeye.vmod.utils.MyVectorDeserializer
 import net.spaceeye.vmod.utils.MyVectorSerializer
 import org.valkyrienskies.core.api.ships.*
-import kotlin.reflect.KClass
+import org.valkyrienskies.core.api.world.PhysLevel
 
 @JsonAutoDetect(
     fieldVisibility = JsonAutoDetect.Visibility.ANY,
@@ -37,11 +32,12 @@ class GravityController(
     @JsonProperty(required = false)
     var gravityVector = dimensionGravity
 
-    override fun applyForces(physShip: PhysShip) {
+    override fun physTick(physShip: PhysShip, physLevel: PhysLevel) {
         val gravityVector = if (useDimensionGravity) dimensionGravity else gravityVector
         val forceDiff = (gravityVector - VS_DEFAULT_GRAVITY) * physShip.mass
         if (forceDiff.sqrDist() < Float.MIN_VALUE) return
 
+        //TODO
         physShip.applyInvariantForce(forceDiff.toJomlVector3d())
     }
 

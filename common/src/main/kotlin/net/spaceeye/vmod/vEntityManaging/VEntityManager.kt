@@ -167,8 +167,8 @@ open class VEntityManager: SavedData() {
         val groups = mutableMapOf<MutableSet<Long>, MutableList<VEntity>>()
 
         for (vEntity in toLoadVEntities) {
-            if (!vEntity.stillExists(allShips!!, dimensionIds)) { continue }
-            val neededIds = vEntity.attachedToShips(dimensionIds)
+            if (!vEntity.stillExists(allShips!!)) { continue }
+            val neededIds = vEntity.attachedToShips()
             if (neededIds.size == 1 && neededIds.contains(-1L)) {
                 levels[vEntity.dimensionId]?.also { makeVEntityWithId(it, vEntity, vEntity.mID) {} }
                 continue
@@ -252,7 +252,7 @@ open class VEntityManager: SavedData() {
             ELOG("Was not able to create VEntity of type ${entity.getType()} under ID ${entity.mID}")
             callback(null)
         }) {
-            val attachedTo = entity.attachedToShips(dimensionToGroundBodyIdImmutable!!.values)
+            val attachedTo = entity.attachedToShips()
             var groundVEntity = false
             //if world ventity
             if (attachedTo.size == 1 && attachedTo.contains(-1)) {
@@ -286,9 +286,11 @@ open class VEntityManager: SavedData() {
     fun removeVEntity(level: ServerLevel, id: VEntityId): Boolean {
         val entity = idToVEntity[id] ?: return false
 
-        val attachedTo = entity.attachedToShips(dimensionToGroundBodyIdImmutable!!.values)
+        val attachedTo = entity.attachedToShips()
+        var groundVEntity = false
         //if world ventity
         if (attachedTo.size == 1 && attachedTo.contains(-1)) {
+            groundVEntity = true
             shipToVEntity[dimensionToId[entity.dimensionId] ?: ""]?.remove(entity)
         } else {
             attachedTo.forEach { (shipToVEntity[it] ?: return@forEach).remove(entity) }
@@ -325,7 +327,7 @@ open class VEntityManager: SavedData() {
             ELOG("Was not able to create VEntity of type ${entity.getType()} under ID ${entity.mID}")
             callback(null)
         }) {
-            val attachedTo = entity.attachedToShips(dimensionToGroundBodyIdImmutable!!.values)
+            val attachedTo = entity.attachedToShips()
             var groundVEntity = false
             //if world ventity
             if (attachedTo.size == 1 && attachedTo.contains(-1)) {
@@ -487,10 +489,6 @@ open class VEntityManager: SavedData() {
         private var instance: VEntityManager? = null
         private var level: ServerLevel? = null
 
-        // SavedData is saved after VSPhysicsPipelineStage is deleted, so getting allShips and
-        // dimensionToGroundBodyIdImmutable from level.shipObjectWorld is impossible, unless you get it's reference
-        // before it got deleted
-        var dimensionToGroundBodyIdImmutable: Map<DimensionId, ShipId>? = null
         var allShips: QueryableShipData<Ship>? = null
 
         init {
@@ -510,7 +508,6 @@ open class VEntityManager: SavedData() {
         fun close() {
             instance = null
             level = null
-            dimensionToGroundBodyIdImmutable = null
             allShips = null
         }
 
@@ -525,7 +522,6 @@ open class VEntityManager: SavedData() {
         fun initNewInstance(): VEntityManager {
             level = ServerObjectsHolder.overworldServerLevel!!
 
-            dimensionToGroundBodyIdImmutable = level!!.shipObjectWorld.dimensionToGroundBodyIdImmutable
             allShips = level!!.shipObjectWorld.allShips
 
             instance = ServerObjectsHolder.overworldServerLevel!!.dataStorage.computeIfAbsent(Companion::load, Companion::create, VM.MOD_ID)
@@ -615,10 +611,11 @@ open class VEntityManager: SavedData() {
                 instance.physThreadTickable[event.world.dimension]?.forEach {k, ve -> ve.physTick(event.world as VsiPhysLevel, event.delta) }
             }
 
-            AVSEvents.blocksWereMovedEvent.on {
-                it, handler ->
-                instance?.onBlocksMove(it.level, it.originalShip, it.newShip, it.oldCenter, it.newCenter, it.blocks)
-            }
+            //TODO
+//            AVSEvents.blocksWereMovedEvent.on {
+//                it, handler ->
+//                instance?.onBlocksMove(it.level, it.originalShip, it.newShip, it.oldCenter, it.newCenter, it.blocks)
+//            }
         }
     }
 }

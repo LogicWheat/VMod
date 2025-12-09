@@ -8,6 +8,7 @@ import net.spaceeye.vmod.events.PersistentEvents
 import net.spaceeye.vmod.mixin.ChunkStorageAccessor
 import net.spaceeye.vmod.mixin.IOWorkerAccessor
 import net.spaceeye.vmod.mixin.RegionFileStorageAccessor
+import org.valkyrienskies.core.api.ships.ServerShip
 import org.valkyrienskies.core.impl.game.ships.ShipData
 import org.valkyrienskies.core.util.pollUntilEmpty
 import org.valkyrienskies.mod.common.getLevelFromDimensionId
@@ -19,7 +20,7 @@ import kotlin.io.path.deleteIfExists
 import kotlin.io.path.notExists
 
 object VSShipyardPruner {
-    val toClear = ConcurrentLinkedQueue<ShipData>()
+    val toClear = ConcurrentLinkedQueue<ServerShip>()
 
     init {
         AVSEvents.serverShipRemoveEvent.on { (ship), _ ->
@@ -29,7 +30,7 @@ object VSShipyardPruner {
         PersistentEvents.serverAfterTick.on { (server), _ ->
             if (!VMConfig.SERVER.SHIPYARD_PRUNER.CLEAR_SHIP_PLOT_ON_DELETION) {return@on}
             if (toClear.isEmpty()) {return@on}
-            val temp = mutableListOf<ShipData>()
+            val temp = mutableListOf<ServerShip>()
             val shipWorld = server.shipObjectWorld
             toClear.pollUntilEmpty { ship ->
                 if (shipWorld.allShips.contains(ship.id)) {
@@ -42,7 +43,7 @@ object VSShipyardPruner {
         }
     }
 
-    private fun clearId(server: MinecraftServer, ship: ShipData) {
+    private fun clearId(server: MinecraftServer, ship: ServerShip) {
         val level = server.getLevelFromDimensionId(ship.chunkClaimDimension) ?: return
         val path = (((level.chunkSource.chunkMap as? ChunkStorageAccessor)?.`vmod$getWorker`() as? IOWorkerAccessor)?.`vmod$getStorage`() as? RegionFileStorageAccessor)?.`vmod$getPath`() ?: return
 

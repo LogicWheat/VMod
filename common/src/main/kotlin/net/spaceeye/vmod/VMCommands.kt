@@ -29,7 +29,6 @@ import net.spaceeye.vmod.limits.ServerLimits
 import net.spaceeye.vmod.mixin.ChunkStorageAccessor
 import net.spaceeye.vmod.mixin.IOWorkerAccessor
 import net.spaceeye.vmod.mixin.RegionFileStorageAccessor
-import net.spaceeye.vmod.mixin.ShipObjectWorldAccessor
 import net.spaceeye.vmod.rendering.RenderingData
 import net.spaceeye.vmod.rendering.textures.GIFReader
 import net.spaceeye.vmod.rendering.textures.WrappedByteArrayInputStream
@@ -38,7 +37,6 @@ import net.spaceeye.vmod.schematic.placeAt
 import net.spaceeye.vmod.shipAttachments.CustomMassSave
 import net.spaceeye.vmod.shipAttachments.GravityController
 import net.spaceeye.vmod.shipAttachments.PhysgunController
-import net.spaceeye.vmod.shipAttachments.ThrustersController
 import net.spaceeye.vmod.shipAttachments.WeightSynchronizer
 import net.spaceeye.vmod.toolgun.PlayerAccessManager
 import net.spaceeye.vmod.toolgun.ServerToolGunState
@@ -57,9 +55,6 @@ import org.valkyrienskies.core.api.ships.ServerShip
 import org.valkyrienskies.core.api.ships.Ship
 import org.valkyrienskies.core.api.ships.properties.ChunkClaim
 import org.valkyrienskies.core.api.ships.properties.ShipId
-import org.valkyrienskies.core.apigame.ships.MutableQueryableShipData
-import org.valkyrienskies.core.impl.shadow.bo
-import org.valkyrienskies.core.impl.shadow.by
 import org.valkyrienskies.mod.common.command.RelativeVector3Argument
 import org.valkyrienskies.mod.common.command.ShipArgument
 import org.valkyrienskies.mod.common.command.shipWorld
@@ -68,19 +63,15 @@ import org.valkyrienskies.mod.common.getShipManagingPos
 import org.valkyrienskies.mod.common.isChunkInShipyard
 import org.valkyrienskies.mod.common.shipObjectWorld
 import org.valkyrienskies.mod.common.util.toJOML
-import org.valkyrienskies.mod.mixinducks.feature.command.VSCommandSource
-import java.io.File
 import java.nio.file.Paths
 import java.util.UUID
 import kotlin.concurrent.thread
-import kotlin.io.path.Path
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.name
 import kotlin.io.path.notExists
 import kotlin.math.max
 
-typealias VSCS = CommandContext<VSCommandSource>
 typealias MCS = CommandContext<CommandSourceStack>
 typealias MCSN = CommandContext<CommandSourceStack?>
 
@@ -125,7 +116,7 @@ object VMCommands {
     private fun teleportCommand(cc: CommandContext<CommandSourceStack>): Int {
         val source = cc.source as CommandSourceStack
 
-        val mainShip = ShipArgument.getShip(cc as VSCS, "ship") as ServerShip
+        val mainShip = ShipArgument.getShip(cc, "ship") as ServerShip
         val position = Vec3Argument.getVec3(cc, "position")
         val dimensionId = (cc.source as CommandSourceStack).level.dimensionId
 
@@ -141,7 +132,7 @@ object VMCommands {
     private fun scaleCommand(cc: CommandContext<CommandSourceStack>): Int {
         val source = cc.source as CommandSourceStack
         val dimensionId = cc.source.level.dimensionId
-        val mainShip = ShipArgument.getShip(cc as VSCS, "ship") as ServerShip
+        val mainShip = ShipArgument.getShip(cc, "ship") as ServerShip
         val scale = DoubleArgumentType.getDouble(cc, "scale")
 
         teleportShipWithConnected(source.level, mainShip, Vector3d(mainShip.transform.positionInWorld), mainShip.transform.shipToWorldRotation, scale, dimensionId)
@@ -221,7 +212,7 @@ object VMCommands {
     }
 
     private fun setGravityFor(cc: CommandContext<CommandSourceStack>): Int {
-        val ships = ShipArgument.getShips(cc as VSCS, "ships")
+        val ships = ShipArgument.getShips(cc, "ships")
 
         val loaded = cc.source.shipWorld.loadedShips
 
@@ -237,7 +228,7 @@ object VMCommands {
     }
 
     private fun setGravityForConnected(cc: CommandContext<CommandSourceStack>): Int {
-        val ships = ShipArgument.getShips(cc as VSCS, "ships")
+        val ships = ShipArgument.getShips(cc, "ships")
 
         val loaded = cc.source.shipWorld.loadedShips
 
@@ -259,7 +250,7 @@ object VMCommands {
     }
 
     private fun setGravityForConnectedAndTouching(cc: CommandContext<CommandSourceStack>): Int {
-        val ships = ShipArgument.getShips(cc as VSCS, "ships")
+        val ships = ShipArgument.getShips(cc, "ships")
 
         val loaded = cc.source.shipWorld.loadedShips
 
@@ -281,7 +272,7 @@ object VMCommands {
     }
 
     private fun resetGravityFor(cc: CommandContext<CommandSourceStack>): Int {
-        val ships = ShipArgument.getShips(cc as VSCS, "ships")
+        val ships = ShipArgument.getShips(cc, "ships")
 
         val loaded = cc.source.shipWorld.loadedShips
 
@@ -341,25 +332,25 @@ object VMCommands {
         fun clearVmodAttachments(cc: CommandContext<CommandSourceStack>): Int {
             val level = cc.source.level
             level.shipObjectWorld.loadedShips.forEach {
-                it.getAttachment(GravityController::class.java)?.let { _ -> it.saveAttachment(GravityController::class.java, null) }
-                it.getAttachment(PhysgunController::class.java)?.let { _ -> it.saveAttachment(PhysgunController::class.java, null) }
-                it.getAttachment(ThrustersController::class.java)?.let { _ -> it.saveAttachment(ThrustersController::class.java, null) }
-                it.getAttachment(CustomMassSave::class.java)?.let { _ -> it.saveAttachment(CustomMassSave::class.java, null) }
-                it.getAttachment(WeightSynchronizer::class.java)?.let { _ -> it.saveAttachment(WeightSynchronizer::class.java, null) }
+                it.getAttachment(GravityController::class.java)?.let { _ -> it.setAttachment(GravityController::class.java, null) }
+                it.getAttachment(PhysgunController::class.java)?.let { _ -> it.setAttachment(PhysgunController::class.java, null) }
+                it.getAttachment(CustomMassSave::class.java)?.let { _ -> it.setAttachment(CustomMassSave::class.java, null) }
+                it.getAttachment(WeightSynchronizer::class.java)?.let { _ -> it.setAttachment(WeightSynchronizer::class.java, null) }
             }
             return 0
         }
 
+        //TODO
         fun deletePhysEntities(cc: CommandContext<CommandSourceStack>): Int {
             val level = cc.source.level
 
-            val entities = (level.shipObjectWorld as ShipObjectWorldAccessor).shipIdToPhysEntity.keys.toList().sorted()
-            entities.forEach {
-                try {
-                    level.shipObjectWorld.deletePhysicsEntity(it)
-                } catch (e: Exception) { ELOG(e.stackTraceToString())
-                } catch (e: Error) { ELOG(e.stackTraceToString()) }
-            }
+//            val entities = (level.shipObjectWorld as ShipObjectWorldAccessor).shipIdToPhysEntity.keys.toList().sorted()
+//            entities.forEach {
+//                try {
+//                    level.shipObjectWorld.deletePhysicsEntity(it)
+//                } catch (e: Exception) { ELOG(e.stackTraceToString())
+//                } catch (e: Error) { ELOG(e.stackTraceToString()) }
+//            }
 
             return 0
         }

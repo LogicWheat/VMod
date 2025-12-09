@@ -43,11 +43,10 @@ import net.spaceeye.vmod.utils.closeServerObjects
 import net.spaceeye.vmod.utils.vs.MyGameToPhysicsAdapter
 import net.spaceeye.vmod.vsStuff.PhysRaycastingScheduler
 import net.spaceeye.vmod.vsStuff.VSGravityManager
-import net.spaceeye.vmod.vsStuff.VSMasslessShipProcessor
 import net.spaceeye.vmod.vsStuff.VSShipyardPruner
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.lwjgl.opengl.GL46
+import org.lwjgl.opengl.GL33
 import org.valkyrienskies.core.api.VsBeta
 import org.valkyrienskies.core.internal.world.VsiPhysLevel
 import org.valkyrienskies.mod.api.vsApi
@@ -66,7 +65,7 @@ var GLMaxArrayTextureLayers: Int = -1
     get() {
         if (field != -1) return field
         val arr = IntArray(1)
-        GL46.glGetIntegerv(GL46.GL_MAX_ARRAY_TEXTURE_LAYERS, arr)
+        GL33.glGetIntegerv(GL33.GL_MAX_ARRAY_TEXTURE_LAYERS, arr)
         field = arr[0]
         return field
     }
@@ -105,7 +104,6 @@ object VM {
         ServerLimits
         ServerPhysgunState
         SchemCompatObj
-        VSMasslessShipProcessor
         VSShipyardPruner
         VMToolgun
 //        PhysRaycastingScheduler //TODO

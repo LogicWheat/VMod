@@ -47,6 +47,7 @@ import org.valkyrienskies.core.api.ships.properties.ShipId
 import org.valkyrienskies.core.impl.game.ShipTeleportDataImpl
 import org.valkyrienskies.core.impl.game.ships.ShipTransformImpl
 import org.valkyrienskies.core.util.toAABBd
+import org.valkyrienskies.mod.api.vsApi
 import org.valkyrienskies.mod.common.dimensionId
 import org.valkyrienskies.mod.common.shipObjectWorld
 import java.util.UUID
@@ -249,11 +250,12 @@ private fun IShipSchematic.createShipConstructors(level: ServerLevel, rotation: 
 
     return shipData.map { Pair({
         val newRot = rotation.mul(it.rotation, Quaterniond())
-        val newTransform = ShipTransformImpl(
+
+        val newTransform = vsApi.newBodyTransform(
             rotation.transform(it.relPositionToCenter.get(Vector3d())),
-            it.previousCenterPosition,
             newRot,
-            JVector3d(it.shipScale, it.shipScale, it.shipScale)
+            JVector3d(it.shipScale, it.shipScale, it.shipScale),
+            it.previousCenterPosition
         )
 
         newTransforms.add(newTransform)

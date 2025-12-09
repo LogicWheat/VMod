@@ -16,8 +16,7 @@ import net.spaceeye.vmod.reflectable.AutoSerializable
 import net.spaceeye.vmod.utils.*
 import net.spaceeye.vmod.rendering.types.*
 import org.valkyrienskies.core.api.ships.properties.ShipId
-import org.valkyrienskies.core.apigame.world.properties.DimensionId
-import org.valkyrienskies.core.impl.hooks.VSEvents
+import org.valkyrienskies.core.api.world.properties.DimensionId
 import org.valkyrienskies.mod.api.vsApi
 import org.valkyrienskies.mod.common.shipObjectWorld
 import java.util.*
@@ -199,7 +198,7 @@ private object SynchronisedRenderingData {
 
     private fun makeClientEvents() {
         EnvExecutor.runInEnv(EnvType.CLIENT) { Runnable {
-            VSEvents.shipLoadEventClient.on { (ship) ->
+            vsApi.shipLoadEventClient.on { event -> val ship = event.ship
                 clientSynchronisedData.subscribeToPageUpdates(ship.id)
             }
             vsApi.shipUnloadEventClient.on { event, _ -> val ship = event.ship

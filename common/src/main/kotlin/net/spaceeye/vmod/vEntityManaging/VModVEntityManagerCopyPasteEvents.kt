@@ -9,11 +9,9 @@ import net.spaceeye.valkyrien_ship_schematics.interfaces.ISchematicEvent
 import net.spaceeye.valkyrien_ship_schematics.interfaces.ISerializable
 import net.spaceeye.vmod.utils.JVector3d
 import net.spaceeye.vmod.utils.Vector3d
-import net.spaceeye.vmod.vEntityManaging.VEntityManager.Companion.dimensionToGroundBodyIdImmutable
 import net.spaceeye.vmod.vEntityManaging.VEntityManager.Companion.getInstance
 import org.valkyrienskies.core.api.ships.ServerShip
 import org.valkyrienskies.core.api.ships.properties.ShipId
-import org.valkyrienskies.mod.common.shipObjectWorld
 import java.util.function.Supplier
 
 class VModVEntityManagerCopyPasteEvents: ISchematicEvent {

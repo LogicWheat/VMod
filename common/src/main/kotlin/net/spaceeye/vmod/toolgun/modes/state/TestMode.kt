@@ -17,7 +17,6 @@ import net.spaceeye.vmod.vsStuff.PhysRaycastingScheduler
 import org.valkyrienskies.core.api.ships.ServerShip
 import org.valkyrienskies.mod.api.dimensionId
 import org.valkyrienskies.mod.common.BlockStateInfo
-import org.valkyrienskies.mod.common.dimensionId
 import org.valkyrienskies.mod.common.shipObjectWorld
 import java.awt.Color
 

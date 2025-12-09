@@ -36,23 +36,24 @@ object PhysRaycastingScheduler: ServerClosable() {
                 val (lock, dimensionMap) = jobs.getOrPut(player.serverLevel().dimensionId) { writeLock.withLock { Pair(ReentrantLock(), mutableMapOf()) } }
 
                 val item = player.mainHandItem.item
-                if (ServerToolGunState.itemShouldRaycast(item)) {
-                    val pos = Vector3d(player.eyePosition).toJomlVector3d()
-                    val dir = Vector3d(player.lookAngle).toJomlVector3d()
-
-                    if (!dimensionMap.contains(player.uuid)) {
-                        lock.withLock { dimensionMap[player.uuid] = Tuple.of(pos, dir, distance, null) }
-                    } else {
-                        val item = dimensionMap[player.uuid]!!
-                        item.i1 = pos
-                        item.i2 = dir
-                        item.i3 = distance
-                    }
-                } else {
-                    if (dimensionMap.contains(player.uuid)) {
-                        lock.withLock { dimensionMap.remove(player.uuid) }
-                    }
-                }
+                //TODO
+//                if (ServerToolGunState.itemShouldRaycast(item)) {
+//                    val pos = Vector3d(player.eyePosition).toJomlVector3d()
+//                    val dir = Vector3d(player.lookAngle).toJomlVector3d()
+//
+//                    if (!dimensionMap.contains(player.uuid)) {
+//                        lock.withLock { dimensionMap[player.uuid] = Tuple.of(pos, dir, distance, null) }
+//                    } else {
+//                        val item = dimensionMap[player.uuid]!!
+//                        item.i1 = pos
+//                        item.i2 = dir
+//                        item.i3 = distance
+//                    }
+//                } else {
+//                    if (dimensionMap.contains(player.uuid)) {
+//                        lock.withLock { dimensionMap.remove(player.uuid) }
+//                    }
+//                }
             }
         }
 

@@ -82,10 +82,6 @@ open class ServerToolGunState(var instance: ToolgunInstance): ServerClosable() {
 
     open fun playerHasPermission(player: ServerPlayer, clazz: Class<BaseMode>): Boolean = PlayerAccessManager.hasPermission(player, clazz.getPermission())
 
-    @JvmStatic fun itemShouldRaycast(item: Item): Boolean {
-        return item is ToolgunItem || item is PhysgunItem
-    }
-
     override fun close() {
         playersStates.clear()
         playersVEntitiesStack.clear()

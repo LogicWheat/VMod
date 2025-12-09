@@ -8,7 +8,6 @@
     "IOWorkerAccessor",
     "LevelChunkMixin",
     "PhysLevelImpl",
-    "ShipAssemblerMixin",
     "RegionFileStorageAccessor",
     "ShipObjectClientWorldMixin",
     "ShipObjectServerWorldMixin"

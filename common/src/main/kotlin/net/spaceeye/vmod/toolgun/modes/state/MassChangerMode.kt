@@ -11,6 +11,7 @@ import net.spaceeye.vmod.toolgun.modes.extensions.BasicConnectionExtension
 import net.spaceeye.vmod.toolgun.modes.gui.MassChangerGUI
 import net.spaceeye.vmod.toolgun.modes.hud.MassChangerHUD
 import net.spaceeye.vmod.reflectable.ByteSerializableItem.get
+import net.spaceeye.vmod.rendering.ShipsColorModulator
 import net.spaceeye.vmod.shipAttachments.WeightSynchronizer
 import net.spaceeye.vmod.utils.*
 import net.spaceeye.vmod.toolgun.gui.Presettable

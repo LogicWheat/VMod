@@ -7,7 +7,6 @@ import net.spaceeye.vmod.toolgun.modes.util.getModePosition
 import net.spaceeye.vmod.utils.*
 import net.spaceeye.vmod.utils.vs.posShipToWorldRender
 import org.joml.Quaterniond
-import net.spaceeye.vmod.toolgun.ClientToolGunState.playerIsUsingToolgun
 import org.valkyrienskies.core.api.VsBeta
 import org.valkyrienskies.core.api.bodies.properties.rebuild
 import org.valkyrienskies.core.api.ships.ClientShip
