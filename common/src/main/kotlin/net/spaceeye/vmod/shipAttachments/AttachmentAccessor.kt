@@ -8,13 +8,14 @@ import org.valkyrienskies.core.api.world.PhysLevel
 import org.valkyrienskies.core.impl.game.ships.PhysShipImpl
 import org.valkyrienskies.core.impl.hooks.VSEvents
 
+//TODO do i need this?
 class AttachmentAccessor: ShipPhysicsListener {
     @JsonIgnore
     var forceInducers = listOf<ShipPhysicsListener>()
 
     override fun physTick(physShip: PhysShip, physLevel: PhysLevel) {
         physShip as PhysShipImpl
-        forceInducers = physShip.physicsListeners
+//        forceInducers = physShip.physicsListeners
     }
 
     companion object {

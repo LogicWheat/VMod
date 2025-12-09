@@ -19,8 +19,8 @@ import org.joml.Matrix3d
 import org.valkyrienskies.core.api.ships.PhysShip
 import org.valkyrienskies.core.api.ships.ShipPhysicsListener
 import org.valkyrienskies.core.api.world.PhysLevel
-import org.valkyrienskies.core.apigame.physics.PhysicsEntityData
-import org.valkyrienskies.core.apigame.physics.VSSphereCollisionShapeData
+import org.valkyrienskies.core.internal.physics.PhysicsEntityData
+import org.valkyrienskies.core.internal.physics.VSSphereCollisionShapeData
 import org.valkyrienskies.core.impl.game.ships.PhysShipImpl
 import org.valkyrienskies.core.impl.game.ships.ShipInertiaDataImpl
 import org.valkyrienskies.core.impl.game.ships.ShipTransformImpl

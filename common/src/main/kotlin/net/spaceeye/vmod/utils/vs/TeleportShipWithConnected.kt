@@ -8,7 +8,7 @@ import org.joml.Quaterniondc
 import org.valkyrienskies.core.api.VsBeta
 import org.valkyrienskies.core.api.bodies.properties.rebuild
 import org.valkyrienskies.core.api.ships.ServerShip
-import org.valkyrienskies.core.apigame.world.properties.DimensionId
+import org.valkyrienskies.core.api.world.properties.DimensionId
 import org.valkyrienskies.core.impl.game.ShipTeleportDataImpl
 import org.valkyrienskies.mod.common.shipObjectWorld
 

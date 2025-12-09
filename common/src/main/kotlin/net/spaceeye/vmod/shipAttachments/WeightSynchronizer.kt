@@ -17,7 +17,7 @@ import org.valkyrienskies.core.api.ships.ServerTickListener
 import org.valkyrienskies.core.api.ships.ShipPhysicsListener
 import org.valkyrienskies.core.api.ships.properties.ShipId
 import org.valkyrienskies.core.api.world.PhysLevel
-import org.valkyrienskies.core.apigame.world.chunks.BlockType
+import org.valkyrienskies.core.internal.world.chunks.VsiBlockType
 import org.valkyrienskies.mod.common.BlockStateInfo
 import org.valkyrienskies.mod.common.getShipObjectManagingPos
 import org.valkyrienskies.mod.common.shipObjectWorld
@@ -86,7 +86,7 @@ class WeightSynchronizer: ShipPhysicsListener, ServerTickListener, ICopyableForc
             val aabb = ship.shipAABB ?: return
 
             var defaultTotalMass = 0.0
-            val blocks = mutableListOf<Tuple3<Double, BlockPos, BlockType>>()
+            val blocks = mutableListOf<Tuple3<Double, BlockPos, VsiBlockType>>()
 
             for (x in aabb.minX()-1..aabb.maxX()+1) {
             for (z in aabb.minZ()-1..aabb.maxZ()+1) {

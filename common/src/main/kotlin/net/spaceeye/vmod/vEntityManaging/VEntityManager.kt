@@ -27,13 +27,12 @@ import net.spaceeye.vmod.utils.vs.gtpa
 import org.apache.commons.lang3.tuple.MutablePair
 import org.jetbrains.annotations.ApiStatus.Internal
 import org.joml.Vector3ic
-import org.joml.primitives.AABBd
 import org.valkyrienskies.core.api.ships.QueryableShipData
 import org.valkyrienskies.core.api.ships.ServerShip
 import org.valkyrienskies.core.api.ships.Ship
 import org.valkyrienskies.core.api.ships.properties.ShipId
 import org.valkyrienskies.core.api.world.properties.DimensionId
-import org.valkyrienskies.core.apigame.world.PhysLevelCore
+import org.valkyrienskies.core.internal.world.VsiPhysLevel
 import org.valkyrienskies.core.util.pollUntilEmpty
 import org.valkyrienskies.mod.api.vsApi
 import org.valkyrienskies.mod.common.dimensionId
@@ -541,6 +540,7 @@ open class VEntityManager: SavedData() {
                     true
                 }
 
+                //TODO there was a concurrent modification somewhere here
                 val toRemove = mutableListOf<Tickable>()
                 ticking.forEach { it.serverTick(server) { toRemove.add(it) } }
                 instance!!.tickingVEntities.removeAll(toRemove)
@@ -556,7 +556,7 @@ open class VEntityManager: SavedData() {
                     val map = instance.physThreadTickable.getOrPut(dimension) { mutableMapOf() }
                     if (add) { map[ventity.mID] = ventity } else { map.remove(ventity.mID) }
                 }
-                instance.physThreadTickable[event.world.dimension]?.forEach {k, ve -> ve.physTick(event.world as PhysLevelCore, event.delta) }
+                instance.physThreadTickable[event.world.dimension]?.forEach {k, ve -> ve.physTick(event.world as VsiPhysLevel, event.delta) }
             }
 
             AVSEvents.blocksWereMovedEvent.on {

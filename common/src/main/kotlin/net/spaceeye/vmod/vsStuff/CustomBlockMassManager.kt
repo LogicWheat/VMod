@@ -6,8 +6,8 @@ import net.spaceeye.vmod.utils.PosMap
 import net.spaceeye.vmod.utils.ServerClosable
 import org.valkyrienskies.core.api.ships.ServerShip
 import org.valkyrienskies.core.api.ships.properties.ShipId
-import org.valkyrienskies.core.apigame.world.chunks.BlockType
-import org.valkyrienskies.core.apigame.world.properties.DimensionId
+import org.valkyrienskies.core.api.world.properties.DimensionId
+import org.valkyrienskies.core.internal.world.chunks.VsiBlockType
 import org.valkyrienskies.mod.common.BlockStateInfo
 import org.valkyrienskies.mod.common.dimensionId
 import org.valkyrienskies.mod.common.getShipManagingPos
@@ -38,7 +38,7 @@ object CustomBlockMassManager: ServerClosable() {
         return setCustomMass(level, x, y, z, mass, type, defaultMass, ship)
     }
 
-    fun setCustomMass(level: ServerLevel, x: Int, y: Int, z: Int, mass: Double, type: BlockType, defaultMass: Double, ship: ServerShip): Boolean {
+    fun setCustomMass(level: ServerLevel, x: Int, y: Int, z: Int, mass: Double, type: VsiBlockType, defaultMass: Double, ship: ServerShip): Boolean {
         val oldMass = getCustomMass(level.dimensionId, x, y, z) ?: defaultMass
 
         val dimensionId = level.dimensionId

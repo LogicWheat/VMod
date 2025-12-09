@@ -20,9 +20,9 @@ import net.spaceeye.vmod.vEntityManaging.util.VEAutoSerializable
 import org.joml.Matrix3d
 import org.joml.Quaterniond
 import org.valkyrienskies.core.api.ships.properties.ShipId
-import org.valkyrienskies.core.apigame.physics.PhysicsEntityData
-import org.valkyrienskies.core.apigame.physics.PhysicsEntityServer
-import org.valkyrienskies.core.apigame.physics.VSCapsuleCollisionShapeData
+import org.valkyrienskies.core.internal.physics.PhysicsEntityData
+import org.valkyrienskies.core.internal.physics.PhysicsEntityServer
+import org.valkyrienskies.core.internal.physics.VSCapsuleCollisionShapeData
 import org.valkyrienskies.core.impl.game.ships.ShipInertiaDataImpl
 import org.valkyrienskies.core.impl.game.ships.ShipTransformImpl
 import org.valkyrienskies.mod.common.dimensionId

@@ -32,12 +32,14 @@ class TestMode: ExtendableToolgunMode() {
 
         val aabb = ship.shipAABB ?: return
 
-//        val (airMass, airType) = BlockStateInfo.get(Blocks.AIR.defaultBlockState()) ?: return
+        val (airMass, airType) = BlockStateInfo.get(Blocks.AIR.defaultBlockState()) ?: return
 
-//        val bpos = raycastResult.blockPosition
-//        val state = level.getBlockState(bpos)
-//        val (mass, type) = BlockStateInfo.get(state) ?: return
-//        level.shipObjectWorld.onSetBlock(bpos.x, bpos.y, bpos.z, level.dimensionId, type, airType, mass, mass)
+        val bpos = raycastResult.blockPosition
+        val state = level.getBlockState(bpos)
+        val (mass, type) = BlockStateInfo.get(state) ?: return
+        println("fuck")
+        level.shipObjectWorld.onSetBlock(bpos.x, bpos.y, bpos.z, level.dimensionId, type, airType, mass, mass)
+        println("me")
 
 //        for (x in aabb.minX()-1..aabb.maxX()+1) {
 //        for (z in aabb.minZ()-1..aabb.maxZ()+1) {

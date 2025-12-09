@@ -24,7 +24,7 @@ import net.spaceeye.vmod.utils.vs.posShipToWorldRender
 import net.spaceeye.vmod.utils.vs.updatePosition
 import org.valkyrienskies.core.api.ships.Ship
 import org.valkyrienskies.core.api.ships.properties.ShipId
-import org.valkyrienskies.core.apigame.physics.VSCapsuleCollisionShapeData
+import org.valkyrienskies.core.internal.physics.VSCapsuleCollisionShapeData
 import org.valkyrienskies.core.impl.game.ships.ShipObjectClientWorld
 import org.valkyrienskies.mod.common.shipObjectWorld
 import java.awt.Color

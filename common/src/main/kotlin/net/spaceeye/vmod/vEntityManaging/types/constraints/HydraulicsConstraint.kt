@@ -12,12 +12,13 @@ import kotlin.math.sign
 import net.spaceeye.vmod.utils.vs.tryMovePosition
 import org.joml.Quaterniond
 import org.joml.Quaterniondc
-import org.valkyrienskies.core.apigame.joints.VSD6Joint
-import org.valkyrienskies.core.apigame.joints.VSDistanceJoint
-import org.valkyrienskies.core.apigame.joints.VSJoint
-import org.valkyrienskies.core.apigame.joints.VSJointMaxForceTorque
-import org.valkyrienskies.core.apigame.joints.VSJointPose
-import org.valkyrienskies.core.apigame.world.PhysLevelCore
+import org.valkyrienskies.core.api.world.PhysLevel
+import org.valkyrienskies.core.internal.joints.VSD6Joint
+import org.valkyrienskies.core.internal.joints.VSDistanceJoint
+import org.valkyrienskies.core.internal.joints.VSJoint
+import org.valkyrienskies.core.internal.joints.VSJointMaxForceTorque
+import org.valkyrienskies.core.internal.joints.VSJointPose
+import org.valkyrienskies.core.internal.world.VsiPhysLevel
 import java.util.EnumMap
 
 class HydraulicsConstraint(): TwoShipsMConstraint(), VEAutoSerializable, Tickable {
@@ -154,7 +155,7 @@ class HydraulicsConstraint(): TwoShipsMConstraint(), VEAutoSerializable, Tickabl
         getExtensionsOfType<TickableVEntityExtension>().forEach { it.tick(server) }
     }
 
-    override fun physTick(level: PhysLevelCore, delta: Double) {
+    override fun physTick(level: VsiPhysLevel, delta: Double) {
         if (cIDs.isEmpty()) {return}
         if (!tryExtendDist()) {return}
 

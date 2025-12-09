@@ -3,8 +3,8 @@ package net.spaceeye.vmod.vEntityManaging.util
 import net.minecraft.server.level.ServerLevel
 import net.spaceeye.vmod.utils.vs.gtpa
 import org.valkyrienskies.core.api.world.PhysLevel
-import org.valkyrienskies.core.apigame.joints.VSJoint
-import org.valkyrienskies.core.apigame.joints.VSJointId
+import org.valkyrienskies.core.internal.joints.VSJoint
+import org.valkyrienskies.core.internal.joints.VSJointId
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentLinkedQueue
 

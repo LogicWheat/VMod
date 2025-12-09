@@ -9,11 +9,10 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.valkyrienskies.core.api.ships.ServerShip;
-import org.valkyrienskies.core.apigame.world.chunks.BlockType;
 import org.valkyrienskies.core.impl.shadow.Er;
+import org.valkyrienskies.core.internal.world.chunks.VsiBlockType;
 
 import java.util.Objects;
-
 
 @Mixin(Er.class)
 abstract public class ShipObjectServerWorldMixin {
@@ -27,17 +26,17 @@ abstract public class ShipObjectServerWorldMixin {
     @Unique int vmod$posY;
     @Unique int vmod$posZ;
     @Unique String vmod$dimensionId;
-    @Unique BlockType vmod$oldBlockType;
-    @Unique BlockType vmod$newBlockType;
+    @Unique VsiBlockType vmod$oldBlockType;
+    @Unique VsiBlockType vmod$newBlockType;
     @Unique double vmod$oldBlockMass;
     @Unique double vmod$newBlockMass;
 
     @Inject(
             method = "onSetBlock",
-            at = @At(value = "INVOKE", target = "Lorg/valkyrienskies/core/impl/shadow/Et;onSetBlock(IIILjava/lang/String;Lorg/valkyrienskies/core/apigame/world/chunks/BlockType;Lorg/valkyrienskies/core/apigame/world/chunks/BlockType;DD)V"),
+            at = @At(value = "HEAD"),
             remap = false
     )
-    void vmod$captureArgs(int posX, int posY, int posZ, String dimensionId, BlockType oldBlockType, BlockType newBlockType, double oldBlockMass, double newBlockMass, CallbackInfo ci) {
+    void vmod$captureArgs(int posX, int posY, int posZ, String dimensionId, VsiBlockType oldBlockType, VsiBlockType newBlockType, double oldBlockMass, double newBlockMass, CallbackInfo ci) {
         vmod$posX = posX;
         vmod$posY = posY;
         vmod$posZ = posZ;
@@ -50,7 +49,7 @@ abstract public class ShipObjectServerWorldMixin {
 
     @ModifyArg(
             method = "onSetBlock",
-            at = @At(value = "INVOKE", target = "Lorg/valkyrienskies/core/impl/shadow/Et;onSetBlock(IIILjava/lang/String;Lorg/valkyrienskies/core/apigame/world/chunks/BlockType;Lorg/valkyrienskies/core/apigame/world/chunks/BlockType;DD)V"),
+            at = @At(value = "HEAD"),
             remap = false,
             index = 6
     )

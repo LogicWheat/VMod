@@ -9,9 +9,9 @@ import net.spaceeye.vmod.utils.Vector3d
 import org.valkyrienskies.core.api.ships.properties.ShipId
 import net.spaceeye.vmod.utils.vs.tryMovePosition
 import org.joml.Quaterniond
-import org.valkyrienskies.core.apigame.joints.VSDistanceJoint
-import org.valkyrienskies.core.apigame.joints.VSJointMaxForceTorque
-import org.valkyrienskies.core.apigame.joints.VSJointPose
+import org.valkyrienskies.core.internal.joints.VSDistanceJoint
+import org.valkyrienskies.core.internal.joints.VSJointMaxForceTorque
+import org.valkyrienskies.core.internal.joints.VSJointPose
 
 class RopeConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
     override var sPos1: Vector3d by get(i++, Vector3d()).also { it.metadata["NoTagSerialization"] = true }

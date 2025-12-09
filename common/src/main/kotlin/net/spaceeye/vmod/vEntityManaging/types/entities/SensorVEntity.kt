@@ -19,7 +19,7 @@ import net.spaceeye.vmod.utils.vs.posShipToWorld
 import net.spaceeye.vmod.utils.vs.transformDirectionShipToWorld
 import net.spaceeye.vmod.vEntityManaging.makeVEntityWithId
 import net.spaceeye.vmod.vEntityManaging.removeVEntity
-import org.valkyrienskies.core.apigame.world.PhysLevelCore
+import org.valkyrienskies.core.internal.world.VsiPhysLevel
 import org.valkyrienskies.mod.common.dimensionId
 import java.util.concurrent.CompletableFuture
 import kotlin.math.min
@@ -110,5 +110,5 @@ class SensorVEntity(): ExtendableVEntity(), Tickable, VEAutoSerializable {
         MessagingNetwork.notify(channel, Signal(min(distance / maxDistance, 1.0)))
     }
 
-    override fun physTick(level: PhysLevelCore, delta: Double) {}
+    override fun physTick(level: VsiPhysLevel, delta: Double) {}
 }

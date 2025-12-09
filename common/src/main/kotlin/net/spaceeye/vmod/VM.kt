@@ -39,6 +39,7 @@ import net.spaceeye.vmod.vsStuff.VSGravityManager
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.valkyrienskies.core.api.VsBeta
+import org.valkyrienskies.core.internal.world.VsiPhysLevel
 import org.valkyrienskies.mod.api.vsApi
 import org.valkyrienskies.mod.common.shipObjectWorld
 
@@ -138,7 +139,7 @@ object VM {
         PhysgunItem.makeEvents()
 
         vsApi.physTickEvent.on { event -> val level = event.world; val delta = event.delta
-            dimToGTPA[level.dimension]?.also { it.physTick(level, delta) }
+            dimToGTPA[level.dimension]?.also { it.physTick(level as VsiPhysLevel, delta) }
         }
     }
 }

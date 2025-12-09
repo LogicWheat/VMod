@@ -9,15 +9,15 @@ import org.valkyrienskies.core.api.ships.QueryableShipData
 import org.valkyrienskies.core.api.ships.Ship
 import org.valkyrienskies.core.api.ships.properties.ShipId
 import org.valkyrienskies.core.api.world.PhysLevel
-import org.valkyrienskies.core.apigame.joints.VSJoint
-import org.valkyrienskies.core.apigame.joints.VSJointId
-import org.valkyrienskies.core.apigame.world.PhysLevelCore
+import org.valkyrienskies.core.internal.joints.VSJoint
+import org.valkyrienskies.core.internal.joints.VSJointId
+import org.valkyrienskies.core.internal.world.VsiPhysLevel
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentLinkedQueue
 
 interface Tickable {
     val alwaysTick: Boolean get() = false
-    fun physTick(level: PhysLevelCore, delta: Double)
+    fun physTick(level: VsiPhysLevel, delta: Double)
     fun serverTick(server: MinecraftServer, unregister: () -> Unit)
 }
 

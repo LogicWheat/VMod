@@ -18,7 +18,7 @@ import org.valkyrienskies.core.api.VsBeta
 import org.valkyrienskies.core.api.ships.QueryableShipData
 import org.valkyrienskies.core.api.ships.Ship
 import org.valkyrienskies.core.api.ships.properties.ShipId
-import org.valkyrienskies.core.apigame.world.PhysLevelCore
+import org.valkyrienskies.core.internal.world.VsiPhysLevel
 import org.valkyrienskies.mod.common.shipObjectWorld
 import java.util.concurrent.CompletableFuture
 
@@ -99,11 +99,9 @@ class ThrusterVEntity(): ExtendableVEntity(), Tickable, VEAutoSerializable {
     }
 
     @OptIn(VsBeta::class)
-    override fun physTick(level: PhysLevelCore, delta: Double) {
-        println("working")
+    override fun physTick(level: VsiPhysLevel, delta: Double) {
         val ship = level.getShipById(shipId) ?: return
-
-        val forcePos = pos - Vector3d(ship.transform.positionInModel)
-        ship.applyRotDependentForceToPos(compiledForce, forcePos.toJomlVector3d())
+        //TODO cache joml directly
+        ship.applyBodyForce(compiledForce, pos.toJomlVector3d())
     }
 }

@@ -9,9 +9,9 @@ import org.joml.Vector3dc
 import org.valkyrienskies.core.api.VsBeta
 import org.valkyrienskies.core.api.ships.properties.ShipId
 import org.valkyrienskies.core.api.world.PhysLevel
-import org.valkyrienskies.core.apigame.joints.VSJoint
-import org.valkyrienskies.core.apigame.joints.VSJointId
-import org.valkyrienskies.core.apigame.world.PhysLevelCore
+import org.valkyrienskies.core.internal.joints.VSJoint
+import org.valkyrienskies.core.internal.joints.VSJointId
+import org.valkyrienskies.core.internal.world.VsiPhysLevel
 import org.valkyrienskies.core.util.pollUntilEmpty
 import org.valkyrienskies.mod.common.dimensionId
 import java.util.concurrent.CompletableFuture
@@ -40,8 +40,7 @@ class MyGameToPhysicsAdapter {
 
     private data class InvForceAtPos(val force: Vector3dc, val pos: Vector3dc)
 
-    fun physTick(level: PhysLevel, delta: Double) {
-        level as PhysLevelCore
+    fun physTick(level: VsiPhysLevel, delta: Double) {
 
         invForces   .pollUntilEmpty { (id, force) -> level.getShipById(id)?.applyInvariantForce(force) }
         invTorques  .pollUntilEmpty { (id, force) -> level.getShipById(id)?.applyInvariantTorque(force) }

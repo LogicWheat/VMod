@@ -8,10 +8,11 @@ import net.spaceeye.vmod.utils.*
 import net.spaceeye.vmod.utils.vs.*
 import org.joml.Quaterniond
 import org.valkyrienskies.core.api.ships.properties.ShipId
-import org.valkyrienskies.core.apigame.joints.VSD6Joint
-import org.valkyrienskies.core.apigame.joints.VSDistanceJoint
-import org.valkyrienskies.core.apigame.joints.VSJointMaxForceTorque
-import org.valkyrienskies.core.apigame.joints.VSJointPose
+import org.valkyrienskies.core.api.util.PhysTickOnly
+import org.valkyrienskies.core.internal.joints.VSD6Joint
+import org.valkyrienskies.core.internal.joints.VSDistanceJoint
+import org.valkyrienskies.core.internal.joints.VSJointMaxForceTorque
+import org.valkyrienskies.core.internal.joints.VSJointPose
 import java.util.EnumMap
 
 class ConnectionConstraint(): TwoShipsMConstraint(), VEAutoSerializable {

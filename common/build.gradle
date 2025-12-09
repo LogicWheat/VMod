@@ -21,7 +21,7 @@ dependencies {
 //    modApi(files("vs_jars/valkyrienskies-120-common-2.3.0-beta.5+6911bbe238.jar"))
     modApi("org.valkyrienskies:valkyrienskies-120-common:${project.vs2_version}")
     compileOnly("org.valkyrienskies.core:api:${project.vs_core_version}")
-    compileOnly("org.valkyrienskies.core:api-game:${project.vs_core_version}")
+    compileOnly("org.valkyrienskies.core:internal:${project.vs_core_version}")
     compileOnly("org.valkyrienskies.core:util:${project.vs_core_version}")
     compileOnly("org.valkyrienskies.core:impl:${project.vs_core_version}")
 

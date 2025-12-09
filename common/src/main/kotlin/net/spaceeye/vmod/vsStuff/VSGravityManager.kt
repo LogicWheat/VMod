@@ -5,23 +5,23 @@ import net.spaceeye.vmod.VMConfig
 import net.spaceeye.vmod.shipAttachments.GravityController
 import net.spaceeye.vmod.utils.ServerObjectsHolder
 import net.spaceeye.vmod.utils.Vector3d
-import org.valkyrienskies.core.apigame.world.properties.DimensionId
-import org.valkyrienskies.core.impl.hooks.VSEvents
+import org.valkyrienskies.core.api.world.properties.DimensionId
 import org.valkyrienskies.mod.common.dimensionId
 import org.valkyrienskies.mod.common.shipObjectWorld
+import org.valkyrienskies.mod.common.vsCore
 
 object VSGravityManager {
     val gravities = mutableMapOf<DimensionId, Vector3d>()
     var wasLoaded = false
     init {
         loadState()
-        VSEvents.shipLoadEvent.on { (ship) ->
+        vsCore.shipLoadEvent.on { event -> var ship = event.ship
             if (!wasLoaded) {
                 ServerObjectsHolder.server!!.allLevels.forEach { gravities.getOrPut(it.dimensionId) {Vector3d(0, -10, 0)}}
                 wasLoaded = true
             }
 
-            val ship = ServerObjectsHolder.server!!.shipObjectWorld.loadedShips.getById(ship.id) ?: return@on
+            ship = ServerObjectsHolder.server!!.shipObjectWorld.loadedShips.getById(ship.id) ?: return@on
             GravityController.getOrCreate(ship)
         }
     }

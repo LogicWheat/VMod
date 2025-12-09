@@ -157,7 +157,9 @@ private class AttachmentsSerializable(): ISerializable {
 private fun IShipSchematicDataV1.saveAttachments(ships: List<ServerShip>, level: ServerLevel, centerPositions: Map<Long, Vector3d>) {
     val attachments = ships
         .mapNotNull { level.shipObjectWorld.loadedShips.getById(it.id) }
-        .map { ship -> Pair(ship, AttachmentAccessor.getOrCreate(ship).forceInducers
+        .map { ship ->
+            //TODO doesn't work
+            Pair(ship, AttachmentAccessor.getOrCreate(ship).forceInducers
             .filterIsInstance<ICopyableForcesInducer>()
             .mapNotNull { ship.getAttachment(it.javaClass) }
             .toMutableList()

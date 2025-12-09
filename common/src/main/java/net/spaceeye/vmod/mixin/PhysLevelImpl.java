@@ -8,8 +8,8 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import org.valkyrienskies.core.apigame.joints.VSJoint;
 import org.valkyrienskies.core.impl.shadow.FO;
+import org.valkyrienskies.core.internal.joints.VSJoint;
 
 @Mixin(FO.class)
 public abstract class PhysLevelImpl {

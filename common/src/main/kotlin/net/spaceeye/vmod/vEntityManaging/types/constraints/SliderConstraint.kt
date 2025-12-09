@@ -9,9 +9,9 @@ import net.spaceeye.vmod.utils.getHingeRotation
 import net.spaceeye.vmod.utils.vs.tryMovePosition
 import org.joml.Quaterniond
 import org.valkyrienskies.core.api.ships.properties.ShipId
-import org.valkyrienskies.core.apigame.joints.VSD6Joint
-import org.valkyrienskies.core.apigame.joints.VSJointMaxForceTorque
-import org.valkyrienskies.core.apigame.joints.VSJointPose
+import org.valkyrienskies.core.internal.joints.VSD6Joint
+import org.valkyrienskies.core.internal.joints.VSJointMaxForceTorque
+import org.valkyrienskies.core.internal.joints.VSJointPose
 import java.util.EnumMap
 
 class SliderConstraint(): TwoShipsMConstraint(), VEAutoSerializable {

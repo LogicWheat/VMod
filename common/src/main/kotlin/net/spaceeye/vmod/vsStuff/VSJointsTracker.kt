@@ -11,11 +11,10 @@ import org.jgrapht.graph.DefaultListenableGraph
 import org.jgrapht.graph.Multigraph
 import org.jgrapht.graph.concurrent.AsSynchronizedGraph
 import org.valkyrienskies.core.api.ships.properties.ShipId
-import org.valkyrienskies.core.apigame.joints.VSJoint
-import org.valkyrienskies.core.apigame.joints.VSJointId
-import org.valkyrienskies.core.apigame.world.PhysLevelCore
+import org.valkyrienskies.core.internal.joints.VSJoint
+import org.valkyrienskies.core.internal.joints.VSJointId
+import org.valkyrienskies.core.internal.world.VsiPhysLevel
 import org.valkyrienskies.mod.api.vsApi
-import org.valkyrienskies.mod.common.shipObjectWorld
 import java.util.concurrent.locks.ReentrantLock
 
 object VSJointsTracker {
@@ -31,7 +30,7 @@ object VSJointsTracker {
 
     //evil hack
     private val lock = ReentrantLock()
-    private val physLevels = mutableMapOf<String, PhysLevelCore>()
+    private val physLevels = mutableMapOf<String, VsiPhysLevel>()
 
     init {
         graph.addGraphListener(inspector)
@@ -43,7 +42,7 @@ object VSJointsTracker {
 
         vsApi.physTickEvent.on {
             if (!lock.tryLock()) return@on
-            physLevels[it.world.dimension] = (it.world as PhysLevelCore)
+            physLevels[it.world.dimension] = (it.world as VsiPhysLevel)
             lock.unlock()
         }
     }
