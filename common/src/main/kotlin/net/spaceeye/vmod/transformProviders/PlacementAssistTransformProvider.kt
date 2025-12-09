@@ -19,7 +19,8 @@ class PlacementAssistTransformProvider(
     var firstResult: RaycastFunctions.RaycastResult,
     var mode: PositionModes,
     var ship1: ClientShip,
-    var precisePlacementAssistSideNum: Int
+    var precisePlacementAssistSideNum: Int,
+    var doWork: () -> Boolean
 ): ClientShipTransformProvider {
     val level = Minecraft.getInstance().level!!
     val player = Minecraft.getInstance().cameraEntity!!
@@ -41,7 +42,7 @@ class PlacementAssistTransformProvider(
         shipTransform: ShipTransform,
         partialTick: Double
     ): ShipTransform? {
-        if (!playerIsUsingToolgun()) {return null}
+        if (!doWork()) {return null}
         val secondResult = RaycastFunctions.renderRaycast(
             level,
             RaycastFunctions.Source(

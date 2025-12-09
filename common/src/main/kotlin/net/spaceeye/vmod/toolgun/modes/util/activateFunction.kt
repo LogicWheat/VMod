@@ -41,16 +41,16 @@ fun calculatePrecise(raycastResult: RaycastFunctions.RaycastResult, precisePlace
     val point = raycastResult.globalHitPos!!
 
     val up = when {
-        globalNormal.x > 0.5 || globalNormal.x < -0.5 -> Vector3d(0, 1, 0)
-        globalNormal.y > 0.5 || globalNormal.y < -0.5 -> Vector3d(1, 0, 0)
-        globalNormal.z > 0.5 || globalNormal.z < -0.5 -> Vector3d(0, 1, 0)
+        globalNormal.x > 0 || globalNormal.x < -0 -> Vector3d(0, 1, 0)
+        globalNormal.y > 0 || globalNormal.y < -0 -> Vector3d(1, 0, 0)
+        globalNormal.z > 0 || globalNormal.z < -0 -> Vector3d(0, 1, 0)
         else -> throw AssertionError("impossible")
     }
 
     val right = when {
-        globalNormal.x > 0.5 || globalNormal.x < -0.5 -> Vector3d(0, 0, 1)
-        globalNormal.y > 0.5 || globalNormal.y < -0.5 -> Vector3d(0, 0, 1)
-        globalNormal.z > 0.5 || globalNormal.z < -0.5 -> Vector3d(1, 0, 0)
+        globalNormal.x > 0 || globalNormal.x < -0 -> Vector3d(0, 0, 1)
+        globalNormal.y > 0 || globalNormal.y < -0 -> Vector3d(0, 0, 1)
+        globalNormal.z > 0 || globalNormal.z < -0 -> Vector3d(1, 0, 0)
         else -> throw AssertionError("impossible")
     }
 

@@ -2,6 +2,7 @@ package net.spaceeye.vmod.vEntityManaging
 
 import net.minecraft.core.BlockPos
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.world.level.ChunkPos
 import org.jetbrains.annotations.ApiStatus.Internal
 import org.valkyrienskies.core.api.ships.properties.ShipId
 import org.valkyrienskies.core.api.world.properties.DimensionId
@@ -12,7 +13,11 @@ fun ServerLevel.getVEntity(id: VEntityId)                = VEntityManager.getIns
 fun ServerLevel.removeVEntity(ventity: VEntity)          = VEntityManager.getInstance().removeVEntity(this, ventity.mID)
 fun ServerLevel.removeVEntity(ventityId: VEntityId)      = VEntityManager.getInstance().removeVEntity(this, ventityId)
 fun ServerLevel.getAllVEntityIdsOfShipId(shipId: ShipId) = VEntityManager.getInstance().getAllVEntitiesIdOfId(shipId)
-fun ServerLevel.getVEntityIdsOfPosition(pos: BlockPos)   = VEntityManager.getInstance().tryGetIdsOfPosition(this.dimensionId, pos)
+
+fun ServerLevel.getVEntityIdsOfPosition(x: Int, y: Int, z: Int) = VEntityManager.getInstance().tryGetIdsOfPosition(this.dimensionId, x, y, z)
+fun ServerLevel.getVEntityIdsOfPosition(pos: BlockPos) = VEntityManager.getInstance().tryGetIdsOfPosition(this.dimensionId, pos)
+fun ServerLevel.getVEntityIdsOfCPosition(x: Int, z: Int) = VEntityManager.getInstance().tryGetIdsOfCPosition(this.dimensionId, x, z)
+fun ServerLevel.getVEntityIdsOfCPosition(pos: ChunkPos) = VEntityManager.getInstance().tryGetIdsOfCPosition(this.dimensionId, pos)
 
 fun ServerLevel.disableCollisionBetween(shipId1: ShipId, shipId2: ShipId, callback: (()->Unit)? = null) = VEntityManager.getInstance().disableCollisionBetween(this, shipId1, shipId2, callback)
 fun ServerLevel.enableCollisionBetween(shipId1: ShipId, shipId2: ShipId)  = VEntityManager.getInstance().enableCollisionBetween(this, shipId1, shipId2)

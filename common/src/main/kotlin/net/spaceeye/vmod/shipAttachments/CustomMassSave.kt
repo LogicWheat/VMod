@@ -54,13 +54,13 @@ class CustomMassSave(): ShipPhysicsListener, ICopyableForcesInducer {
     ) {
         wasCopied = false
 
-        if (tempMassData == null) {return}
-
+        val oldId = shipId
         val newShip = loadedShips[shipId]!!
-        val (oldCenter, newCenter) = centerPositions[shipId]!!
-
         dimensionId = newShip.chunkClaimDimension
         shipId = newShip.id
+
+        if (tempMassData == null) {return}
+        val (oldCenter, newCenter) = centerPositions[oldId]!!
 
         tempMassData!!.forEach { (pos, mass) ->
             val pos = Vector3d(pos)

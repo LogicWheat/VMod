@@ -3,6 +3,7 @@ package net.spaceeye.vmod.rendering.types
 import com.mojang.blaze3d.vertex.PoseStack
 import net.minecraft.client.Camera
 import net.minecraft.client.renderer.MultiBufferSource
+import net.spaceeye.vmod.ELOG
 import net.spaceeye.vmod.networking.Serializable
 import net.spaceeye.vmod.utils.Vector3d
 import org.valkyrienskies.core.api.ships.Ship
@@ -14,8 +15,10 @@ abstract class BaseRenderer: Serializable {
     abstract fun renderData(poseStack: PoseStack, camera: Camera, timestamp: Long)
     abstract fun copy(oldToNew: Map<ShipId, Ship>, centerPositions: Map<ShipId, Pair<Vector3d, Vector3d>>): BaseRenderer?
     abstract fun scaleBy(by: Double)
-    open fun highlightUntil(until: Long) { throw NotImplementedError() }
-    open fun highlightUntilRenderingTicks(until: Long) { throw NotImplementedError() }
+    open fun highlightUntil(until: Long) { ELOG("How did you do that? ${Exception().stackTraceToString()}") }
+    open fun highlightUntilRenderingTicks(until: Long) { ELOG("How did you do that? ${Exception().stackTraceToString()}") }
+
+    open fun tryUpdate(): BaseRenderer = this
 }
 
 abstract class BlockRenderer: BaseRenderer() {

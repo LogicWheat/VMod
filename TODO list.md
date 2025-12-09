@@ -1,6 +1,7 @@
 # VERY IMPORTANT
 
-* Rework permission level and player roles
+* Rework permission level and player roles (not sure what i meant by that)
+* I don't think ventities will work correctly after being teleported to another dimension
 
 # Maybe
 
@@ -8,10 +9,19 @@
 * Mode to disable collisions for certain blocks (will need to mixin into shipAABB cuz blocks without collisions don't contribute to) (set type to type of air)
 * Think of smth to use blockless ships that have collision (set type to smth that is not air)
 
+* Add static mode to physgun
+* Add config menu to physgun for finetuning
+
 # Do Eventually
+
+* Redo GIFTexture
+* Remove usage of client transform providers with custom renderers
+* Clean up physgun code
+* Add snapping to physgun rotation
 
 * Make vmod stuff work with phys entities (making constraints, grabbing them, etc)
 * Add a way for addons to add their own client/server settings
+* Finish Patchouli guide book
 
 # Gravity Changer
 * rework saving/loading
@@ -24,14 +34,10 @@
 * Group rendering objects by types to elevate common operations and add shared data between rendering types
 * Fix rendering when i modify rendering transform of ships and player stands on the ship (VS2 moves camera when player stands on the ship) 
 * Redo how normal renderers and block renderers work
-* Redo ConeBlockRenderer into a more general version
 
 ## Constraint disabler
 * An extension that will enable/disable it when signal is given
 * Maybe also a variant that removes them?
-
-## Toolgun settings presets menu
-* maybe when pressing alt or smth it will show all presets for this mode, and allow player to cycle them
 
 ## Add a "wire" thing maybe as an addon to vmod
 
@@ -40,9 +46,6 @@
 
 ## Ticking Constraints
 * Redo them
-
-## HUD Rendering
-* Add info window for like part weight, total weight, connections, etc
 
 ## Sounds
 * Add sounds and shit
@@ -54,12 +57,6 @@
 ## Toolgun Menu
 * Expand menu with more GUI components (sliders, drop down options, etc)
 * Make menu look better
-
-## Custom Access Levels
-* Make special commands for op users
-    * Clean every mconstraint of acc level.
-    * Set limit for total mconstraints of acc level.
-    * Some other commands idk
 
 ## Motor Constraint
 * Code below kinda works, but idk how to get angle from initial rotation, and it's very buggy (might get better on physx)

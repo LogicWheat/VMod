@@ -37,6 +37,7 @@ import net.spaceeye.vmod.compat.schem.SchemCompatObj
 import net.spaceeye.vmod.utils.BlockPos
 import net.spaceeye.vmod.events.SessionEvents
 import net.spaceeye.vmod.toolgun.ServerToolGunState
+import net.spaceeye.vmod.gui.additions.ErrorAddition
 import net.spaceeye.vmod.translate.ONE_OF_THE_SHIPS_IS_TOO_TALL
 import net.spaceeye.vmod.utils.JVector3d
 import net.spaceeye.vmod.utils.ServerClosable
@@ -76,6 +77,7 @@ object SchematicActionsQueue: ServerClosable() {
         var externalVSchemSupportProvider: ExternalVSchemCompatProvider = SchemCompatObj,
 
         var logger: Logger? = null,
+        //TODO add callback for fatal errors
         var nonfatalErrorsHandler: (numErrors: Int, schematic: IShipSchematicDataV1, player: ServerPlayer?) -> Unit = {_, _, _->}
     )
 
@@ -225,7 +227,7 @@ object SchematicActionsQueue: ServerClosable() {
                     .also { it.forEach {
                         val bounds = it.value.centeredShipAABB
                         if (bounds.maxY() - bounds.minY() > level.yRange.size) {
-                            player?.let { ServerToolGunState.sendErrorTo(it, ONE_OF_THE_SHIPS_IS_TOO_TALL) }
+                            player?.let { ErrorAddition.sendErrorTo(it, ONE_OF_THE_SHIPS_IS_TOO_TALL) }
                             return null
                     } } }
                     .also { shipsInfo = it }
@@ -299,8 +301,6 @@ object SchematicActionsQueue: ServerClosable() {
 
                     if (getNow_ms() - start > timeout && settings.allowUpdateInterruption) { return false }
                 }
-
-//                (ship.transformProvider as? SchemTempPositionSetter)?.work = true
 
                 currentChunk = 0
                 currentShip++
@@ -555,10 +555,13 @@ object SchematicActionsQueue: ServerClosable() {
                     var tick = 0
                     SessionEvents.serverOnTick.on { (server), unsubscribe ->
                         tick++
-                        if (tick > 2) {
+                        if (tick <= 10) return@on
+
+                        try {
                             item!!.postPlacementFn(item.createdShips, item.centerPositions, item.entityCreationFn)
-                            unsubscribe()
-                        }
+                        } catch (e: Exception) { item?.settings?.logger?.error("Failed to call postPlacementFn with exception:\n${e.stackTraceToString()}")
+                        } catch (e: Error    ) { item?.settings?.logger?.error("Failed to call postPlacementFn with error:\n${e.stackTraceToString()}")}
+                        unsubscribe()
                     }
 
                     placeData.remove(placeLastKeys[placeLastPosition])

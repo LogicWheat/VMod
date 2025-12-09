@@ -19,9 +19,7 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.FriendlyByteBuf
 import net.minecraft.sounds.SoundEvent
 import net.minecraft.sounds.SoundSource
-import net.minecraft.util.AbortableIterationConsumer
 import net.minecraft.util.RandomSource
-import net.minecraft.world.Difficulty
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.flag.FeatureFlagSet
@@ -34,11 +32,6 @@ import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.EntityBlock
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
-import net.minecraft.world.level.chunk.DataLayer
-import net.minecraft.world.level.chunk.LightChunk
-import net.minecraft.world.level.chunk.LightChunkGetter
-import net.minecraft.world.level.entity.EntityAccess
-import net.minecraft.world.level.entity.EntityTypeTest
 import net.minecraft.world.level.entity.LevelEntityGetter
 import net.minecraft.world.level.gameevent.GameEvent
 import net.minecraft.world.level.lighting.LevelLightEngine
@@ -46,7 +39,6 @@ import net.minecraft.world.level.material.Fluid
 import net.minecraft.world.level.material.FluidState
 import net.minecraft.world.level.material.Fluids
 import net.minecraft.world.level.saveddata.maps.MapItemSavedData
-import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import net.minecraft.world.scores.Scoreboard
 import net.minecraft.world.ticks.LevelTickAccess
@@ -57,10 +49,11 @@ import net.spaceeye.valkyrien_ship_schematics.interfaces.IShipSchematic
 import net.spaceeye.valkyrien_ship_schematics.interfaces.v1.IShipInfo
 import net.spaceeye.valkyrien_ship_schematics.interfaces.v1.IShipSchematicDataV1
 import net.spaceeye.vmod.ELOG
+import net.spaceeye.vmod.WLOG
+import net.spaceeye.vmod.rendering.RenderTypes
 import net.spaceeye.vmod.rendering.types.BaseRenderer
 import net.spaceeye.vmod.rendering.types.BlockRenderer
-import net.spaceeye.vmod.toolgun.ClientToolGunState
-import net.spaceeye.vmod.toolgun.ClientToolGunState.playerIsUsingToolgun
+import net.spaceeye.vmod.toolgun.VMToolgun
 import net.spaceeye.vmod.toolgun.modes.state.SchemMode
 import net.spaceeye.vmod.utils.DummyChunkSource
 import net.spaceeye.vmod.utils.DummyLevelEntityGetter
@@ -78,44 +71,8 @@ import org.joml.Vector3i
 import org.valkyrienskies.core.api.ships.Ship
 import org.valkyrienskies.core.api.ships.properties.ShipId
 import java.awt.Color
-import java.util.UUID
-import java.util.function.Consumer
-import java.util.Random
 import java.util.function.Supplier
 import kotlin.math.roundToInt
-
-//TODO optimize more
-//TODO won't work with sodium cuz it uses it's own buffer builder
-//fun maybeFasterVertexBuilder(buffer: VertexConsumer, x: Float, y: Float, z: Float, r: Byte, g: Byte, b: Byte, a: Byte, u: Float, v: Float, combinedOverlay: Int, lightmapUV: Int, normalX: Float, normalY: Float, normalZ: Float) {
-//    buffer as BufferBuilder
-//    buffer as BufferBuilderAccessor
-//
-//    buffer.putFloat(0, x)
-//    buffer.putFloat(4, y)
-//    buffer.putFloat(8, z)
-//    buffer.putByte(12, r)
-//    buffer.putByte(13, g)
-//    buffer.putByte(14, b)
-//    buffer.putByte(15, a)
-//    buffer.putFloat(16, u)
-//    buffer.putFloat(20, v)
-//    val i = if (buffer.`vmod$fullFormat`()) {
-//        buffer.putShort(24, (combinedOverlay and 0xffff).toShort())
-//        buffer.putShort(26, (combinedOverlay shr 16 and 0xffff).toShort())
-//        28
-//    } else { 24 }
-//
-//    buffer.putShort(i + 0, (lightmapUV and 0xffff).toShort())
-//    buffer.putShort(i + 2, (lightmapUV shr 16 and 0xffff).toShort())
-//    buffer.putByte(i + 4, BufferVertexConsumer.normalIntValue(normalX))
-//    buffer.putByte(i + 5, BufferVertexConsumer.normalIntValue(normalY))
-//    buffer.putByte(i + 6, BufferVertexConsumer.normalIntValue(normalZ))
-//
-//    buffer.`vmod$nextElementByte`(buffer.`vmod$nextElementByte`() + i + 8)
-//
-//    //not using endVertex to not call ensureCapacity
-//    buffer.`vmod$vertices`(buffer.`vmod$vertices`() + 1)
-//}
 
 class FakeLevel(
     val level: ClientLevel,
@@ -207,6 +164,7 @@ class FakeLevel(
     override fun getFluidTicks(): LevelTickAccess<Fluid?>? { throw AssertionError("Shouldn't be called")  }
 }
 
+//somehow this is faster than doing things properly
 class FakeBufferBuilder(val source: SchemMultiBufferSource): VertexConsumer {
     val vertices = mutableListOf<Vertex>()
 
@@ -217,14 +175,13 @@ class FakeBufferBuilder(val source: SchemMultiBufferSource): VertexConsumer {
     var vertexMatrixIndex = 0
 
     data class Vertex(var x: Float, var y: Float, var z: Float, var red: Float, var green: Float, var blue: Float, var alpha: Float, var texU: Float, var texV: Float, var overlayUV: Int, var lightmapUV: Int, var normalX: Float, var normalY: Float, var normalZ: Float, var matrixIndex: Int) {
-        fun apply(buffer: VertexConsumer, transparency: Float, matrices: List<org.joml.Matrix4f>) {
+        inline fun apply(buffer: VertexConsumer, transparency: Float, matrices: List<Matrix4f>) {
             val matrix = matrices[matrixIndex]
-
-            var x_ = matrix.m00() * x + matrix.m10() * y + matrix.m20() * z + matrix.m30()
-            var y_ = matrix.m01() * x + matrix.m11() * y + matrix.m21() * z + matrix.m31()
-            var z_ = matrix.m02() * x + matrix.m12() * y + matrix.m22() * z + matrix.m32()
-
-            buffer.vertex(x_, y_, z_, red, green, blue, alpha * transparency, texU, texV, overlayUV, lightmapUV, normalX, normalY, normalZ)
+            buffer.vertex(
+                matrix.m00() * x + matrix.m10() * y + matrix.m20() * z + matrix.m30(),
+                matrix.m01() * x + matrix.m11() * y + matrix.m21() * z + matrix.m31(),
+                matrix.m02() * x + matrix.m12() * y + matrix.m22() * z + matrix.m32(),
+                red, green, blue, alpha * transparency, texU, texV, overlayUV, lightmapUV, normalX, normalY, normalZ)
         }
     }
 
@@ -237,7 +194,7 @@ class FakeBufferBuilder(val source: SchemMultiBufferSource): VertexConsumer {
         unsetDefaultColor()
     }
 
-    fun apply(buffer: VertexConsumer, matrices: List<org.joml.Matrix4f>) {
+    fun apply(buffer: VertexConsumer, matrices: List<Matrix4f>) {
         var i = 0
         val size = vertices.size
         while (i < size) {
@@ -350,10 +307,9 @@ class SchematicRenderer(val schem: IShipSchematic, val transparency: Float, val 
                 val bpos = BlockPos(x, y, z)
                 val state = flevel.getBlockState(bpos) ?: return@forEach
 
-                val type = if (state.fluidState.isEmpty) {
-                    RenderType.translucent()
-                } else {
-                    ItemBlockRenderTypes.getRenderLayer(state.fluidState)
+                val type = when(state.fluidState.isEmpty) {
+                    true -> RenderTypes.schematicBlock.type
+                    false -> ItemBlockRenderTypes.getRenderLayer(state.fluidState)
                 }
 
                 val offset = infoItem.previousCenterPosition.let { it.sub(it.x.roundToInt().toDouble(), it.y.roundToInt().toDouble(), it.z.roundToInt().toDouble(), JVector3d()) }
@@ -377,7 +333,7 @@ class SchematicRenderer(val schem: IShipSchematic, val transparency: Float, val 
                 }
             }
             matrixIndex++
-            poseStack.last().pose().also { poseStack.popPose() }
+            poseStack.last().pose().get(Matrix4f()).also { poseStack.popPose() }
         }
     }
 
@@ -390,12 +346,6 @@ class SchematicRenderer(val schem: IShipSchematic, val transparency: Float, val 
 
         mySources.buffers.forEach { (type, buf) ->
             val actualBuffer = sources.getBuffer(type)
-//            actualBuffer as BufferBuilderAccessor
-//
-//            val vertexSize = (actualBuffer as BufferBuilderAccessor).`vmod$getVertexFormat`().vertexSize
-//            var size = buf.vertices.size * vertexSize
-//            (actualBuffer as BufferBuilderAccessor).`vmod$ensureCapacity`(size)
-
             buf.apply(actualBuffer, matrices)
         }
 
@@ -410,7 +360,7 @@ class SchematicRenderer(val schem: IShipSchematic, val transparency: Float, val 
                 infoItem.relPositionToCenter.y,
                 infoItem.relPositionToCenter.z,
             )
-            poseStack.mulPose(infoItem.rotation.let { Quaternionf(it.x().toFloat(), it.y().toFloat(), it.z().toFloat(), it.w().toFloat()) })
+            poseStack.mulPose(infoItem.rotation.get(Quaternionf()))
             infoItem.shipScale.toFloat().also {
                 poseStack.scale(it, it, it)
             }
@@ -437,8 +387,8 @@ class SchematicRenderer(val schem: IShipSchematic, val transparency: Float, val 
                         beRenderer.render(be, 0f, it, sources, LightTexture.FULL_BRIGHT, OverlayTexture.NO_OVERLAY)
                     }
                 //TODO maybe i shouldn't just log everything
-                } catch (e: Exception) { ELOG("Failed to render block entity\n${e.stackTraceToString()}"); toRemove.add(i)
-                } catch (e: Error) { ELOG("Failed to render block entity\n${e.stackTraceToString()}"); toRemove.add(i) }
+                } catch (e: Exception) { WLOG("Failed to render block entity\n${e.stackTraceToString()}"); toRemove.add(i)
+                } catch (e: Error) { WLOG("Failed to render block entity\n${e.stackTraceToString()}"); toRemove.add(i) }
                 poseStack.popPose()
             }
             toRemove.reversed().forEach { level.blockEntities.removeAt(it) }
@@ -447,24 +397,24 @@ class SchematicRenderer(val schem: IShipSchematic, val transparency: Float, val 
     }
 }
 
-class SchemRenderer(
+open class SchemRenderer(
     val schem: IShipSchematic,
     val rotationAngle: Ref<Double>,
     var transparency: Float = 0.5f,
-    var renderBlockEntities: Boolean
+    var renderBlockEntities: Boolean,
+    var doRender: () -> Boolean = { VMToolgun.client.currentMode is SchemMode && VMToolgun.client.playerIsUsingToolgun() }
 ): BlockRenderer() {
     var renderer: SchematicRenderer? = null
 
-    init {
-        Thread {
-            renderer = SchematicRenderer(schem, transparency, renderBlockEntities)
-        }.start()
+    init { init() }
+
+    open fun init() {
+        Thread { renderer = SchematicRenderer(schem, transparency, renderBlockEntities) }.start()
     }
 
     override fun renderBlockData(poseStack: PoseStack, camera: Camera, sources: MultiBufferSource, timestamp: Long) {
-        val mode = ClientToolGunState.currentMode
-        if (mode !is SchemMode) {return}
-        if (!playerIsUsingToolgun()) {return}
+        if (!doRender()) {return}
+        if (renderer == null) {return}
         val level = Minecraft.getInstance().level!!
 
         val raycastResult = RaycastFunctions.renderRaycast(
@@ -478,9 +428,13 @@ class SchemRenderer(
 
         val pos = (raycastResult.worldHitPos ?: return) + (raycastResult.worldNormalDirection ?: return) * schem.info!!.maxObjectPos.y
 
+        renderBlocks(poseStack, sources, camera, pos, raycastResult.worldNormalDirection!!, rotationAngle.it)
+    }
+
+    open fun renderBlocks(poseStack: PoseStack, sources: MultiBufferSource, camera: Camera, pos: Vector3d, worldNormal: Vector3d, rotationAroundNormal: Double) {
         val rotation = Quaterniond()
-            .mul(Quaterniond(AxisAngle4d(rotationAngle.it, raycastResult.worldNormalDirection!!.toJomlVector3d())))
-            .mul(getQuatFromDir(raycastResult.worldNormalDirection!!))
+            .mul(Quaterniond(AxisAngle4d(rotationAroundNormal, worldNormal.toJomlVector3d())))
+            .mul(getQuatFromDir(worldNormal))
             .normalize()
             .get(Quaternionf())
 

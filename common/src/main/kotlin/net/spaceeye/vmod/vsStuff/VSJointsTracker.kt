@@ -16,11 +16,12 @@ import org.valkyrienskies.core.internal.joints.VSJointId
 import org.valkyrienskies.core.internal.world.VsiPhysLevel
 import org.valkyrienskies.mod.api.vsApi
 import java.util.concurrent.locks.ReentrantLock
+import net.spaceeye.vmod.utils.ServerClosable
 
-object VSJointsTracker {
-    private val graph = DefaultListenableGraph(AsSynchronizedGraph(Multigraph<Long, DefaultEdge>(DefaultEdge::class.java)))
-    private val inspector = MyConnectivityInspector(graph) //todo this is not optimal
-    private val edgeInfo = mutableMapOf<Set<Long>, Int>()
+object VSJointsTracker: ServerClosable() {
+    private var graph = DefaultListenableGraph(AsSynchronizedGraph(Multigraph<Long, DefaultEdge>(DefaultEdge::class.java)))
+    private var inspector = MyConnectivityInspector(graph) //todo this is not optimal
+    private val edgeInfo = mutableMapOf<Set<Long>, Int>() //TODO change to set of joint ids?
 
     val connectionAdded   = SafeEventEmitter<OnConnectionAdded>()
     val connectionRemoved = SafeEventEmitter<OnConnectionRemoved>()
@@ -45,6 +46,15 @@ object VSJointsTracker {
             physLevels[it.world.dimension] = (it.world as VsiPhysLevel)
             lock.unlock()
         }
+    }
+
+    override fun close() {
+        graph = DefaultListenableGraph(AsSynchronizedGraph(Multigraph<Long, DefaultEdge>(DefaultEdge::class.java)))
+        inspector = MyConnectivityInspector(graph)
+        edgeInfo.clear()
+
+        graph.addGraphListener(inspector)
+        inspector.connectedSets()
     }
 
     @JvmStatic

@@ -15,6 +15,8 @@ object VMConfig {
         val TOOLGUN = ClientToolgunSettings()
         val RENDERING = ClientRenderingSettings()
 
+        val SHUT_UP: Boolean by CBool(false, "Disable patchouli notification")
+
         class ClientToolgunSettings: ConfigSubDirectory() {
             var MAX_RAYCAST_DISTANCE: Double by CDouble(100.0, "", Pair(1.0, Double.MAX_VALUE))
 
@@ -38,6 +40,7 @@ object VMConfig {
         val TOOLGUN = ServerToolgunSettings()
         val PERMISSIONS = Permissions()
         val SCHEMATICS = Schematics()
+        val SHIPYARD_PRUNER = ShipyardPruner()
 
         class ServerPhysgunSettings(): ConfigSubDirectory() {
             val GRAB_ALL_CONNECTED_SHIPS: Boolean by CBool(false, "A bit buggy.", false)
@@ -64,6 +67,18 @@ object VMConfig {
 
         class Schematics: ConfigSubDirectory() {
             var TIMEOUT_TIME: Int by CInt(50, "No Comment", Pair(0, Int.MAX_VALUE))
+
+            var ALLOW_CHUNK_PLACEMENT_INTERRUPTION: Boolean by CBool(false, "Allows ships to be created over several ticks (so that if you have a huge ship it won't freeze server). May be incompatible with some mods though.")
+            var ALLOW_CHUNK_UPDATE_INTERRUPTION: Boolean by CBool(false, "Allows ships to be updated over several ticks (so that if you have a huge ship it won't freeze server). May be incompatible with some mods though.")
+            var LOAD_CONTAINERS: Boolean by CBool(true, "Determines whenever or not block entities implementing from Container (chests for example) will be loaded")
+            var LOAD_ENTITIES: Boolean by CBool(true, "Determines whenever or not entities will be loaded")
+            var BLACKLIST_MODE: Boolean by CBool(true, "If true, will load nbt of all block entities that are not in blacklist. If false, will only load nbt of whitelisted block entities")
+            var BLACKLIST: String by CString("", "Write resource location of blocks separated by commas, like \"minecraft:chest, some_mod:idk\"")
+            var WHITELIST: String by CString("", "Write resource location of blocks separated by commas, like \"minecraft:chest, some_mod:idk\"")
+        }
+
+        class ShipyardPruner: ConfigSubDirectory() {
+            var CLEAR_SHIP_PLOT_ON_DELETION: Boolean by CBool(true, "Will automatically delete region files of deleted ships")
         }
     }
 }

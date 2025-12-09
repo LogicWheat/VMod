@@ -1,4 +1,9 @@
+plugins {
+    id "com.ssblur.mtp" version "1.0.1"
+}
+
 repositories {
+    mavenLocal()
     maven {
         url = "https://repo.essential.gg/repository/maven-public"
     }
@@ -6,19 +11,31 @@ repositories {
     mavenCentral()
 }
 
+mtp {
+    namespace "the_vmod"
+    bookId "vmod_guide"
+    input "patchouli/vmod_guide"
+    output "common/src/main/resources"
+}
+
+//tasks {
+//    jar {
+//        dependsOn convert
+//    }
+//}
+
 dependencies {
-    modImplementation ("net.spaceeye:valkyrien-ship-schematics-$project.minecraft_version-$project.name:$project.vss_version")
+    modImplementation ("net.spaceeye:valkyrien-ship-schematics-$project.minecraft_version-$project.name:$project.vss_version") {transitive false}
     implementation "org.jgrapht:jgrapht-core:1.5.2"
 
     api 'org.joml:joml-primitives:1.10.0'
     api 'org.joml:joml:1.10.4'
     // We depend on fabric loader here to use the fabric @Environment annotations and get the mixin dependencies
     // Do NOT use other classes from fabric loader
-    modImplementation ("net.fabricmc:fabric-loader:${project.fabric_loader_version}")
+    modImplementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
     // Remove the next line if you don't want to depend on the API
-    modApi ("dev.architectury:architectury:${project.architectury_version}")
+    modApi "dev.architectury:architectury:${project.architectury_version}"
 
-//    modApi(files("vs_jars/valkyrienskies-120-common-2.3.0-beta.5+6911bbe238.jar"))
     modApi("org.valkyrienskies:valkyrienskies-120-common:${project.vs2_version}")
     compileOnly("org.valkyrienskies.core:api:${project.vs_core_version}")
     compileOnly("org.valkyrienskies.core:internal:${project.vs_core_version}")
@@ -31,13 +48,19 @@ dependencies {
     compileOnly("gg.essential:elementa:${project.elementaVersion}")
     modImplementation(include("gg.essential:universalcraft-1.20.1-fabric:${project.ucVersion}"))
 
+    //SODIUM
+    modCompileOnly("maven.modrinth:sodium:${project.sodium_version}")
+
     modCompileOnlyApi(files("vs_jars/clockwork-1.18.2-0.1.16-fabric-a0682a9698.jar"))
     modCompileOnlyApi(files("vs_jars/trackwork-1.20.1-1.1.1b.jar"))
-    modCompileOnlyApi(files("vs_jars/takeoff-fabric-1.0.0-beta1+308678c5c5.jar"))
 
     modCompileOnly("com.simibubi.create:create-fabric-${minecraft_version}:${create_fabric_version}")
 
+    modCompileOnly("maven.modrinth:patchouli:1.20.1-84.1-forge")
+
     compileOnly(annotationProcessor("io.github.llamalad7:mixinextras-common:0.4.0-beta.2"))
+
+    implementation(annotationProcessor("com.github.bawnorton.mixinsquared:mixinsquared-fabric:0.3.5-beta.2"))
 }
 
 //Renames .kotlin_module of common so that it's not overwrited during forge/fabric compilation

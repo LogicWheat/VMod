@@ -1,10 +1,11 @@
 package net.spaceeye.vmod.toolgun.modes.state
 
 import gg.essential.elementa.components.UIContainer
-import net.minecraft.core.BlockPos
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.level.block.Blocks
+import net.spaceeye.vmod.rendering.RenderingData
+import net.spaceeye.vmod.rendering.types.debug.RainbowRenderer
 import net.spaceeye.vmod.ELOG
 import net.spaceeye.vmod.toolgun.modes.ExtendableToolgunMode
 import net.spaceeye.vmod.toolgun.modes.ToolgunModes
@@ -16,7 +17,9 @@ import net.spaceeye.vmod.vsStuff.PhysRaycastingScheduler
 import org.valkyrienskies.core.api.ships.ServerShip
 import org.valkyrienskies.mod.api.dimensionId
 import org.valkyrienskies.mod.common.BlockStateInfo
+import org.valkyrienskies.mod.common.dimensionId
 import org.valkyrienskies.mod.common.shipObjectWorld
+import java.awt.Color
 
 class TestMode: ExtendableToolgunMode() {
     override val itemName = makeFake("Test Mode")
@@ -27,8 +30,15 @@ class TestMode: ExtendableToolgunMode() {
 
     fun activatePrimaryFunction(level: ServerLevel, player: ServerPlayer, raycastResult: RaycastFunctions.RaycastResult)  {
         if (raycastResult.state.isAir) {return}
+
+//        RenderingData.server.addRenderer(listOf(), ConeBlockRenderer(
+//            raycastResult.worldHitPos!! + raycastResult.globalNormalDirection!! * 0.5, getQuatFromDir(raycastResult.worldNormalDirection!!), 1f, -1, Color(255, 255, 255, 255), true
+//        ), level.dimensionId)
+
         val ship = raycastResult.ship as? ServerShip ?: return
         val lship = level.shipObjectWorld.loadedShips.getById(ship.id)
+
+        //RenderingData.server.addRenderer(listOf(ship.id), RainbowRenderer(ship.id))
 
         val aabb = ship.shipAABB ?: return
 
@@ -37,9 +47,7 @@ class TestMode: ExtendableToolgunMode() {
         val bpos = raycastResult.blockPosition
         val state = level.getBlockState(bpos)
         val (mass, type) = BlockStateInfo.get(state) ?: return
-        println("fuck")
         level.shipObjectWorld.onSetBlock(bpos.x, bpos.y, bpos.z, level.dimensionId, type, airType, mass, mass)
-        println("me")
 
 //        for (x in aabb.minX()-1..aabb.maxX()+1) {
 //        for (z in aabb.minZ()-1..aabb.maxZ()+1) {

@@ -1,9 +1,14 @@
 package net.spaceeye.vmod.schematic
 
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.core.registries.Registries
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.FriendlyByteBuf
+import net.minecraft.resources.ResourceKey
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.world.level.block.Block
 import net.spaceeye.valkyrien_ship_schematics.ShipSchematic
 import net.spaceeye.valkyrien_ship_schematics.containers.v1.*
 import net.spaceeye.valkyrien_ship_schematics.interfaces.IBlockStatePalette
@@ -17,9 +22,10 @@ import net.spaceeye.vmod.ELOG
 import net.spaceeye.vmod.VM
 import net.spaceeye.vmod.schematic.SchematicActionsQueue.CopySchematicSettings
 import net.spaceeye.vmod.schematic.SchematicActionsQueue.PasteSchematicSettings
+import net.spaceeye.vmod.VMConfig
+import net.spaceeye.vmod.WLOG
 import net.spaceeye.vmod.toolgun.SELOG
 import net.spaceeye.vmod.utils.*
-import net.spaceeye.vmod.utils.vs.rotateAroundCenter
 import net.spaceeye.vmod.utils.vs.traverseGetAllTouchingShips
 import org.joml.Quaterniond
 import org.joml.Quaterniondc
@@ -29,6 +35,7 @@ import org.joml.primitives.AABBd
 import org.joml.primitives.AABBi
 import net.spaceeye.vmod.shipAttachments.AttachmentAccessor
 import net.spaceeye.vmod.toolgun.ServerToolGunState
+import net.spaceeye.vmod.toolgun.VMToolgun
 import net.spaceeye.vmod.translate.makeFake
 import net.spaceeye.vmod.utils.vs.posShipToWorld
 import net.spaceeye.vmod.utils.vs.transformDirectionShipToWorld
@@ -57,22 +64,46 @@ class VModShipSchematicV2(): IShipSchematic, IShipSchematicDataV1, SchemSerializ
     override var extraData: MutableList<Pair<String, FriendlyByteBuf>> = mutableListOf()
 
     override var info: IShipSchematicInfo? = null
-//    override var entityData: MutableMap<ShipId, List<EntityItem>> = mutableMapOf()
+}
+
+fun parseList(data: String): Set<Block> {
+    if (data.isEmpty()) return emptySet()
+    val lookup = BuiltInRegistries.BLOCK.asLookup()!!
+
+    return data
+        .split(",")
+        .map { it.trimStart().trimEnd() }
+        .mapNotNull {
+            try {
+                lookup.get(ResourceKey.create(Registries.BLOCK, ResourceLocation(it))).get().value()
+            } catch (e: Exception) {
+                WLOG("Unknown resource location $it")
+                null;
+            }
+        }.toSet()
 }
 
 @OptIn(VsBeta::class)
 fun IShipSchematicDataV1.placeAt(
     level: ServerLevel, player: ServerPlayer?, uuid: UUID, pos: Vector3d, rotation: Quaterniondc,
-     settings: PasteSchematicSettings = PasteSchematicSettings(
-         logger = VM.logger,
-         //TODO think of a way to make str into translatable
-         nonfatalErrorsHandler = { numErrors, _, player -> player?.let { ServerToolGunState.sendErrorTo(it, "Schematic had $numErrors nonfatal errors") } }
+    settings: PasteSchematicSettings = PasteSchematicSettings(
+        logger = VM.logger,
+        //TODO add to wiki or smth "if you have shitload of "Schematic had x nonfatal errors" then set those to false"
+        allowChunkPlacementInterruption = VMConfig.SERVER.SCHEMATICS.ALLOW_CHUNK_PLACEMENT_INTERRUPTION,
+        allowUpdateInterruption = VMConfig.SERVER.SCHEMATICS.ALLOW_CHUNK_UPDATE_INTERRUPTION,
+        loadContainers = VMConfig.SERVER.SCHEMATICS.LOAD_CONTAINERS,
+        loadEntities = VMConfig.SERVER.SCHEMATICS.LOAD_ENTITIES,
+        blacklistMode = VMConfig.SERVER.SCHEMATICS.BLACKLIST_MODE,
+        nbtLoadingBlacklist = parseList(VMConfig.SERVER.SCHEMATICS.BLACKLIST),
+        nbtLoadingWhitelist = parseList(VMConfig.SERVER.SCHEMATICS.WHITELIST),
+        //TODO think of a way to make str into translatable
+        nonfatalErrorsHandler = { numErrors, _, player -> player?.let { VMToolgun.server.sendErrorTo(it, "Schematic had $numErrors nonfatal errors") } }
      ), postPlaceFn: (List<ServerShip>) -> Unit): Boolean {
     extraData.forEach { (_, bytes) -> bytes.setIndex(0, bytes.accessByteBufWithCorrectSize().size) }
 
     val newTransforms = mutableListOf<BodyTransform>()
 
-    val shipInitializers = (this as IShipSchematic).createShipConstructors(level, pos, rotation, newTransforms)
+    val shipInitializers = (this as IShipSchematic).createShipConstructors(level, rotation, newTransforms)
 
     if (!verifyBlockDataIsValid(shipInitializers.map { it.second }, player)) { return false }
 
@@ -86,15 +117,20 @@ fun IShipSchematicDataV1.placeAt(
             ELOG(e.stackTraceToString())
         }
 
-        createdShips.zip(newTransforms).forEach { (it, transform) ->
-            val b = it.shipAABB!!
-            var offset = MVector3d(it.transform.positionInModel) - MVector3d(
-                (b.maxX() - b.minX()) / 2.0 + b.minX(),
-                (b.maxY() - b.minY()) / 2.0 + b.minY(),
-                (b.maxZ() - b.minZ()) / 2.0 + b.minZ(),
-            )
-            offset = transformDirectionShipToWorld(it, offset)
-            val toPos = MVector3d(transform.position) + MVector3d(pos) + offset
+        for ((it, transform) in createdShips.zip(newTransforms)) {
+            //TODO add ?: to nonfatal errors
+            var offset = it.shipAABB?.let { b ->
+                //positionInModel is wrong sometimes. why?????????????????????????????????
+                MVector3d(it.transform.positionInModel) - MVector3d(
+                    (b.maxX() - b.minX()) / 2.0 + b.minX(),
+                    (b.maxY() - b.minY()) / 2.0 + b.minY(),
+                    (b.maxZ() - b.minZ()) / 2.0 + b.minZ(),
+                )
+            } ?: MVector3d(0, 0, 0)
+
+            offset = transformDirectionShipToWorld(transform, offset)
+            // target position + rotated (contraption center - ship world pos) + (COM position - logical center)
+            val toPos = MVector3d(pos) + MVector3d(transform.position) + offset
             level.shipObjectWorld.teleportShip(it, ShipTeleportDataImpl(
                 toPos.toJomlVector3d(),
                 transform.rotation,
@@ -208,30 +244,27 @@ private fun loadAttachments(level: ServerLevel, ships: Map<Long, ServerShip>, ce
     }
 }
 
-private fun IShipSchematic.createShipConstructors(level: ServerLevel, pos: Vector3d, rotation: Quaterniondc, newTransforms: MutableList<BodyTransform>): List<Pair<() -> ServerShip, Long>> {
+private fun IShipSchematic.createShipConstructors(level: ServerLevel, rotation: Quaterniondc, newTransforms: MutableList<BodyTransform>): List<Pair<() -> ServerShip, Long>> {
     val shipData = info!!.shipsInfo
-    // during schem creation ship positions are normalized so that the center is at 0 0 0
-    val center = ShipTransformImpl.create(JVector3d(), JVector3d(), Quaterniond(), JVector3d(1.0, 1.0, 1.0))
 
     return shipData.map { Pair({
-        val thisTransform = ShipTransformImpl.create(
-            it.relPositionToCenter,
-            JVector3d(),
-            it.rotation,
+        val newRot = rotation.mul(it.rotation, Quaterniond())
+        val newTransform = ShipTransformImpl(
+            rotation.transform(it.relPositionToCenter.get(Vector3d())),
+            it.previousCenterPosition,
+            newRot,
             JVector3d(it.shipScale, it.shipScale, it.shipScale)
         )
-        val temp = rotateAroundCenter(center, thisTransform, rotation)
 
-        // reusing posInShip as it's useless
-        val newTransform = ShipTransformImpl.create(temp.position, it.previousCenterPosition, temp.rotation, JVector3d(it.shipScale, it.shipScale, it.shipScale))
         newTransforms.add(newTransform)
 
         val newShip = level.shipObjectWorld.createNewShipAtBlock(Vector3i(1000000000, 1000000000, 1000000000), false, it.shipScale, level.dimensionId)
         newShip.isStatic = true
 
+        //TODO ships will touch during assembly and that may activate blocks in them, maybe space them out?
         level.shipObjectWorld.teleportShip(newShip, ShipTeleportDataImpl(
             JVector3d(1000000000.0, 1000000000.0, 1000000000.0),
-            newTransform.rotation,
+            newRot,
             newScale = it.shipScale
         ))
         newShip
@@ -244,7 +277,7 @@ fun IShipSchematicDataV1.verifyBlockDataIsValid(
 ): Boolean {
     ids.forEach { id ->
         blockData[id] ?: run {
-            val str = "Ship ID exists not no block data was saved. Not placing a schematic."
+            val str = "Ship ID exists but no block data was saved. Not placing a schematic."
             player?.also { SELOG(str, player, str, false) } ?: run { ELOG(str) }
             return false
         }

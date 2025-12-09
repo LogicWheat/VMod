@@ -4,9 +4,12 @@
   "package": "net.spaceeye.vmod.mixin",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
+    "ChunkStorageAccessor",
+    "IOWorkerAccessor",
     "LevelChunkMixin",
     "PhysLevelImpl",
     "ShipAssemblerMixin",
+    "RegionFileStorageAccessor",
     "ShipObjectClientWorldMixin",
     "ShipObjectServerWorldMixin"
   ],
@@ -15,7 +18,9 @@
     "GameRendererMixin",
     "KeyboardHandlerMixin",
     "LevelRendererMixin",
-    "MixinMouseHandler"
+    "MixinLevelRendererVanillaMixin",
+    "MixinMouseHandler",
+    "NativeImageInvoker"
   ],
   "injectors": {
     "defaultRequire": 1

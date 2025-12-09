@@ -74,7 +74,7 @@ description='''
    versionRange="[4,)"
    ordering="AFTER"
    side="BOTH"
-[[dependencies.valkyrien_mod]]
+[[dependencies.the_vmod]]
    modId="trackwork"
    mandatory=false
    versionRange="[1,)"

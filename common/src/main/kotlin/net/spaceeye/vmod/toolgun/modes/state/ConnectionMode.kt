@@ -1,9 +1,11 @@
 package net.spaceeye.vmod.toolgun.modes.state
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
-import net.spaceeye.vmod.vEntityManaging.addFor
+import net.spaceeye.vmod.MOD_ID
+import net.spaceeye.vmod.vEntityManaging.addForVMod
 import net.spaceeye.vmod.vEntityManaging.extensions.RenderableExtension
 import net.spaceeye.vmod.vEntityManaging.extensions.Strippable
 import net.spaceeye.vmod.vEntityManaging.makeVEntity
@@ -14,6 +16,7 @@ import net.spaceeye.vmod.toolgun.modes.gui.ConnectionGUI
 import net.spaceeye.vmod.toolgun.modes.hud.ConnectionHUD
 import net.spaceeye.vmod.reflectable.ByteSerializableItem.get
 import net.spaceeye.vmod.rendering.RenderingUtils
+import net.spaceeye.vmod.rendering.types.A2BRendererAnimated
 import net.spaceeye.vmod.toolgun.gui.Presettable
 import net.spaceeye.vmod.toolgun.gui.Presettable.Companion.presettable
 import net.spaceeye.vmod.toolgun.modes.*
@@ -39,7 +42,7 @@ class ConnectionMode: ExtendableToolgunMode(), ConnectionGUI, ConnectionHUD {
     var fullbright: Boolean by get(i++, false).presettable()
 
     var fixedDistance: Float by get(i++, -1.0f) { ServerLimits.instance.fixedDistance.get(it) }.presettable()
-    var connectionMode: ConnectionConstraint.ConnectionModes by get(i++, ConnectionConstraint.ConnectionModes.FIXED_ORIENTATION).presettable()
+    var connectionMode: ConnectionConstraint.ConnectionModes by get(i++, ConnectionConstraint.ConnectionModes.FIXED_ORIENTATION).presettable().onClientChange { refreshHUD() }
     var primaryFirstRaycast: Boolean by get(i++, false)
 
 
@@ -66,7 +69,7 @@ class ConnectionMode: ExtendableToolgunMode(), ConnectionGUI, ConnectionHUD {
             ship2?.id ?: -1L,
             spoint1, spoint2,
             color, width, fullbright, RenderingUtils.whiteTexture
-        ))).addExtension(Strippable())){it.addFor(player)}
+        ))).addExtension(Strippable())){it.addForVMod(player)}
 
         resetState()
     }
@@ -77,7 +80,7 @@ class ConnectionMode: ExtendableToolgunMode(), ConnectionGUI, ConnectionHUD {
     }
 
     companion object {
-        val paNetworkingObj = PlacementAssistNetworking("connection_networking")
+        val paNetworkingObj = PlacementAssistNetworking("connection_networking", MOD_ID)
         init {
             //"it" IS THE SAME ON CLIENT BUT ON SERVER IT CREATES NEW INSTANCE OF THE MODE
             ToolgunModes.registerWrapper(ConnectionMode::class) {

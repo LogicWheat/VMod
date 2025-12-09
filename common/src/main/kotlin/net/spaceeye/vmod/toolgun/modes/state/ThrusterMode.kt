@@ -4,18 +4,19 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.Level
+import net.spaceeye.vmod.VMBlocks
 import net.spaceeye.vmod.vEntityManaging.*
 import net.spaceeye.vmod.vEntityManaging.extensions.RenderableExtension
 import net.spaceeye.vmod.vEntityManaging.extensions.SignalActivator
 import net.spaceeye.vmod.vEntityManaging.extensions.Strippable
 import net.spaceeye.vmod.vEntityManaging.types.entities.ThrusterVEntity
 import net.spaceeye.vmod.limits.ServerLimits
-import net.spaceeye.vmod.rendering.types.ConeBlockRenderer
 import net.spaceeye.vmod.toolgun.modes.gui.ThrusterGUI
 import net.spaceeye.vmod.toolgun.modes.hud.ThrusterHUD
 import net.spaceeye.vmod.toolgun.modes.util.PositionModes
 import net.spaceeye.vmod.toolgun.modes.util.getModePosition
 import net.spaceeye.vmod.reflectable.ByteSerializableItem.get
+import net.spaceeye.vmod.rendering.types.BlockStateRenderer
 import net.spaceeye.vmod.toolgun.gui.Presettable
 import net.spaceeye.vmod.toolgun.gui.Presettable.Companion.presettable
 import net.spaceeye.vmod.toolgun.modes.ExtendableToolgunMode
@@ -53,11 +54,11 @@ class ThrusterMode: ExtendableToolgunMode(), ThrusterHUD, ThrusterGUI {
             basePos,
             -raycastResult.globalNormalDirection!!,
             force, channel
-        ).addExtension(RenderableExtension(ConeBlockRenderer(
-            basePos, getQuatFromDir(raycastResult.globalNormalDirection!!), scale.toFloat(), ship.id, fullbright = fullbright
+        ).addExtension(RenderableExtension(BlockStateRenderer(
+            basePos, getQuatFromDir(raycastResult.globalNormalDirection!!), scale.toFloat(), ship.id, fullbright = fullbright, state = VMBlocks.CONE_THRUSTER.get().defaultBlockState()
         ))).addExtension(SignalActivator(
             "channel", "percentage"
-        )).addExtension(Strippable())){it.addFor(player)}
+        )).addExtension(Strippable())){it.addForVMod(player)}
     }
 
     companion object {

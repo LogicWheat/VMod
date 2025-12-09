@@ -3,7 +3,8 @@ package net.spaceeye.vmod.toolgun.modes.state
 import com.fasterxml.jackson.annotation.JsonIgnore
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
-import net.spaceeye.vmod.vEntityManaging.addFor
+import net.spaceeye.vmod.MOD_ID
+import net.spaceeye.vmod.vEntityManaging.addForVMod
 import net.spaceeye.vmod.vEntityManaging.extensions.RenderableExtension
 import net.spaceeye.vmod.vEntityManaging.extensions.SignalActivator
 import net.spaceeye.vmod.vEntityManaging.extensions.Strippable
@@ -29,8 +30,6 @@ import org.valkyrienskies.core.api.ships.ServerShip
 import org.valkyrienskies.core.api.ships.properties.ShipId
 import java.awt.Color
 
-object HydraulicsNetworking: PlacementAssistNetworking("hydraulics_networking")
-
 class HydraulicsMode: ExtendableToolgunMode(), HydraulicsGUI, HydraulicsHUD {
     @JsonIgnore private var i = 0
 
@@ -44,7 +43,7 @@ class HydraulicsMode: ExtendableToolgunMode(), HydraulicsGUI, HydraulicsHUD {
     var fullbright: Boolean by get(i++, false).presettable()
 
     var fixedMinLength: Float by get(i++, -1f) { ServerLimits.instance.fixedDistance.get(it) }.presettable()
-    var connectionMode: HydraulicsConstraint.ConnectionMode by get(i++, HydraulicsConstraint.ConnectionMode.FIXED_ORIENTATION).presettable()
+    var connectionMode: HydraulicsConstraint.ConnectionMode by get(i++, HydraulicsConstraint.ConnectionMode.FIXED_ORIENTATION).presettable().onClientChange { refreshHUD() }
 
     var extensionDistance: Float by get(i++, 5f) { ServerLimits.instance.extensionDistance.get(it) }.presettable()
     var extensionSpeed: Float by get(i++, 1f) { ServerLimits.instance.extensionSpeed.get(it) }.presettable()
@@ -72,7 +71,7 @@ class HydraulicsMode: ExtendableToolgunMode(), HydraulicsGUI, HydraulicsHUD {
             shipId1, shipId2,
             maxForce, stiffness, damping,
             minLength, minLength + extensionDistance,
-            extensionSpeed / 60f, channel, connectionMode
+            extensionSpeed, channel, connectionMode
         ).addExtension(RenderableExtension(A2BRenderer(
             ship1?.id ?: -1L,
             ship2?.id ?: -1L,
@@ -80,7 +79,7 @@ class HydraulicsMode: ExtendableToolgunMode(), HydraulicsGUI, HydraulicsHUD {
             color, width, fullbright, RenderingUtils.whiteTexture
         ))).addExtension(SignalActivator(
             "channel", "targetPercentage"
-        )).addExtension(Strippable())){it.addFor(player)}
+        )).addExtension(Strippable())){it.addForVMod(player)}
 
         resetState()
     }
@@ -92,6 +91,7 @@ class HydraulicsMode: ExtendableToolgunMode(), HydraulicsGUI, HydraulicsHUD {
 
     companion object {
         init {
+            val paNetworking = PlacementAssistNetworking("hydraulics_networking", MOD_ID)
             ToolgunModes.registerWrapper(HydraulicsMode::class) {
                 it.addExtension {
                     BasicConnectionExtension<HydraulicsMode>("hydraulics_mode"
@@ -102,7 +102,7 @@ class HydraulicsMode: ExtendableToolgunMode(), HydraulicsGUI, HydraulicsHUD {
                 }.addExtension{
                     BlockMenuOpeningExtension<HydraulicsMode> { inst -> inst.primaryFirstRaycast || inst.paMiddleFirstRaycast }
                 }.addExtension {
-                    PlacementAssistExtension(true, HydraulicsNetworking,
+                    PlacementAssistExtension(true, paNetworking,
                         { (it as HydraulicsMode).primaryFirstRaycast },
                         { (it as HydraulicsMode).connectionMode == HydraulicsConstraint.ConnectionMode.HINGE_ORIENTATION },
                         { spoint1: Vector3d, spoint2: Vector3d, rpoint1: Vector3d, rpoint2: Vector3d, ship1: ServerShip, ship2: ServerShip?, shipId1: ShipId, shipId2: ShipId, rresults: Pair<RaycastFunctions.RaycastResult, RaycastFunctions.RaycastResult>, paDistanceFromBlock: Double ->
@@ -115,7 +115,7 @@ class HydraulicsMode: ExtendableToolgunMode(), HydraulicsGUI, HydraulicsHUD {
                                 shipId1, shipId2,
                                 it.maxForce, it.stiffness, it.damping,
                                 paDistanceFromBlock.toFloat(), paDistanceFromBlock.toFloat() + it.extensionDistance,
-                                it.extensionSpeed / 60f, it.channel, it.connectionMode
+                                it.extensionSpeed, it.channel, it.connectionMode
                             ).addExtension(RenderableExtension(A2BRenderer(
                                 ship1?.id ?: -1L,
                                 ship2?.id ?: -1L,

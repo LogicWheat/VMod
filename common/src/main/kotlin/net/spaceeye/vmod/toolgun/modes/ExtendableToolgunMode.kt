@@ -1,9 +1,12 @@
 package net.spaceeye.vmod.toolgun.modes
 
 import dev.architectury.event.EventResult
+import dev.architectury.utils.Env
 import gg.essential.elementa.components.UIContainer
 import net.minecraft.network.FriendlyByteBuf
+import net.spaceeye.vmod.reflectable.ReflectableItemDelegate
 import net.spaceeye.vmod.reflectable.SubReflectable
+import net.spaceeye.vmod.toolgun.ToolgunInstance
 import org.jetbrains.annotations.ApiStatus.NonExtendable
 import org.jetbrains.annotations.ApiStatus.OverrideOnly
 
@@ -37,9 +40,17 @@ interface ToolgunModeExtension: MSerializable, EBase, EClientEventsHandler, EGUI
 }
 
 abstract class ExtendableToolgunMode: BaseMode, EBase, EGUIBuilder, EHUDBuilder, EClientEventsHandler {
+    final override lateinit var instance: ToolgunInstance
     @SubReflectable val linearExtensions = mutableListOf<ToolgunModeExtension>()
     private val _extensions = mutableSetOf<ToolgunModeExtension>()
     val extensions: Collection<ToolgunModeExtension> get() = _extensions
+    lateinit var envType: BaseNetworking.EnvType
+
+    fun <T: Any> ReflectableItemDelegate<T>.onClientChange(fn: (T) -> Unit): ReflectableItemDelegate<T> =
+        this.setSetWrapper { old, new -> if (envType == BaseNetworking.EnvType.Client) { fn(new) }; new }
+
+    fun <T: Any> ReflectableItemDelegate<T>.onServerChange(fn: (T) -> Unit): ReflectableItemDelegate<T> =
+        this.setSetWrapper { old, new -> if (envType == BaseNetworking.EnvType.Server) { fn(new) }; new }
 
     fun <T: ExtendableToolgunMode> addExtensionFn(fn: (T) -> ToolgunModeExtension): T {
         val ext = fn(this as T)
@@ -142,6 +153,7 @@ abstract class ExtendableToolgunMode: BaseMode, EBase, EGUIBuilder, EHUDBuilder,
 
     final override fun init(type: BaseNetworking.EnvType) {
         if (wasInitialized) return
+        envType = type
 
         _extensions.forEach { it.preInit(this, type) }
         super.eInit(type)

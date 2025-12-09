@@ -1,0 +1,14 @@
+{
+  "id": "toolgun/controls",
+  "icon": "minecraft:book",
+  "category": "the_vmod:toolgun",
+  "name": "Controls",
+  "sortnum": -1,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "text": "$(li)Press \"TAB\" to open toolgun GUI$(li)After choosing a mode text hints in upper left will usually tell you what actions you can do with it$(li)Press \"R\" to reset mode to the beginning$(li)Press \"Z\" to delete created constraints/ventities$(li)You can create setting presets for certain modes. To change preset hold \"LAlt\" and scroll mouse wheel. ",
+      "title": "Toolgun Controls"
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 package net.spaceeye.vmod
 
+import com.fasterxml.jackson.databind.util.ByteBufferBackedInputStream
 import com.google.common.primitives.Ints.min
 import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.arguments.ArgumentType
@@ -9,42 +10,77 @@ import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.builder.RequiredArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
+import dev.architectury.platform.Platform
+import io.netty.buffer.Unpooled
+import net.minecraft.client.Minecraft
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.arguments.DimensionArgument
 import net.minecraft.commands.arguments.EntityArgument
 import net.minecraft.commands.arguments.coordinates.Vec3Argument
+import net.minecraft.nbt.CompoundTag
+import net.minecraft.nbt.StreamTagVisitor
 import net.minecraft.network.chat.Component
+import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.level.ChunkPos
+import net.minecraft.world.level.chunk.ChunkStatus
+import net.minecraft.world.level.chunk.storage.ChunkSerializer
 import net.spaceeye.valkyrien_ship_schematics.interfaces.v1.IShipSchematicDataV1
 import net.spaceeye.vmod.limits.ServerLimits
+import net.spaceeye.vmod.mixin.ChunkStorageAccessor
+import net.spaceeye.vmod.mixin.IOWorkerAccessor
+import net.spaceeye.vmod.mixin.RegionFileStorageAccessor
+import net.spaceeye.vmod.mixin.ShipObjectWorldAccessor
 import net.spaceeye.vmod.rendering.RenderingData
+import net.spaceeye.vmod.rendering.textures.GIFReader
+import net.spaceeye.vmod.rendering.textures.WrappedByteArrayInputStream
 import net.spaceeye.vmod.rendering.types.debug.DebugRenderer
 import net.spaceeye.vmod.schematic.placeAt
 import net.spaceeye.vmod.shipAttachments.CustomMassSave
 import net.spaceeye.vmod.shipAttachments.GravityController
 import net.spaceeye.vmod.shipAttachments.PhysgunController
+import net.spaceeye.vmod.shipAttachments.ThrustersController
 import net.spaceeye.vmod.shipAttachments.WeightSynchronizer
 import net.spaceeye.vmod.toolgun.PlayerAccessManager
+import net.spaceeye.vmod.toolgun.ServerToolGunState
 import net.spaceeye.vmod.toolgun.modes.state.PlayerSchematics
+import net.spaceeye.vmod.utils.BlockPos
 import net.spaceeye.vmod.utils.Vector3d
+import net.spaceeye.vmod.utils.getNow_ms
 import net.spaceeye.vmod.utils.vs.teleportShipWithConnected
 import net.spaceeye.vmod.utils.vs.traverseGetAllTouchingShips
 import net.spaceeye.vmod.utils.vs.traverseGetConnectedShips
 import net.spaceeye.vmod.vsStuff.VSGravityManager
 import org.joml.Quaterniond
+import org.lwjgl.system.MemoryUtil
 import org.valkyrienskies.core.api.ships.LoadedServerShip
 import org.valkyrienskies.core.api.ships.ServerShip
 import org.valkyrienskies.core.api.ships.Ship
+import org.valkyrienskies.core.api.ships.properties.ChunkClaim
 import org.valkyrienskies.core.api.ships.properties.ShipId
+import org.valkyrienskies.core.apigame.ships.MutableQueryableShipData
+import org.valkyrienskies.core.impl.shadow.bo
+import org.valkyrienskies.core.impl.shadow.by
 import org.valkyrienskies.mod.common.command.RelativeVector3Argument
 import org.valkyrienskies.mod.common.command.ShipArgument
 import org.valkyrienskies.mod.common.command.shipWorld
 import org.valkyrienskies.mod.common.dimensionId
+import org.valkyrienskies.mod.common.getShipManagingPos
+import org.valkyrienskies.mod.common.isChunkInShipyard
 import org.valkyrienskies.mod.common.shipObjectWorld
 import org.valkyrienskies.mod.common.util.toJOML
+import org.valkyrienskies.mod.mixinducks.feature.command.VSCommandSource
+import java.io.File
 import java.nio.file.Paths
 import java.util.UUID
+import kotlin.concurrent.thread
+import kotlin.io.path.Path
+import kotlin.io.path.deleteIfExists
+import kotlin.io.path.listDirectoryEntries
+import kotlin.io.path.name
+import kotlin.io.path.notExists
 import kotlin.math.max
 
+typealias VSCS = CommandContext<VSCommandSource>
 typealias MCS = CommandContext<CommandSourceStack>
 typealias MCSN = CommandContext<CommandSourceStack?>
 
@@ -89,7 +125,7 @@ object VMCommands {
     private fun teleportCommand(cc: CommandContext<CommandSourceStack>): Int {
         val source = cc.source as CommandSourceStack
 
-        val mainShip = ShipArgument.getShip(cc, "ship") as ServerShip
+        val mainShip = ShipArgument.getShip(cc as VSCS, "ship") as ServerShip
         val position = Vec3Argument.getVec3(cc, "position")
         val dimensionId = (cc.source as CommandSourceStack).level.dimensionId
 
@@ -105,7 +141,7 @@ object VMCommands {
     private fun scaleCommand(cc: CommandContext<CommandSourceStack>): Int {
         val source = cc.source as CommandSourceStack
         val dimensionId = cc.source.level.dimensionId
-        val mainShip = ShipArgument.getShip(cc, "ship") as ServerShip
+        val mainShip = ShipArgument.getShip(cc as VSCS, "ship") as ServerShip
         val scale = DoubleArgumentType.getDouble(cc, "scale")
 
         teleportShipWithConnected(source.level, mainShip, Vector3d(mainShip.transform.positionInWorld), mainShip.transform.shipToWorldRotation, scale, dimensionId)
@@ -185,7 +221,7 @@ object VMCommands {
     }
 
     private fun setGravityFor(cc: CommandContext<CommandSourceStack>): Int {
-        val ships = ShipArgument.getShips(cc, "ships")
+        val ships = ShipArgument.getShips(cc as VSCS, "ships")
 
         val loaded = cc.source.shipWorld.loadedShips
 
@@ -201,7 +237,7 @@ object VMCommands {
     }
 
     private fun setGravityForConnected(cc: CommandContext<CommandSourceStack>): Int {
-        val ships = ShipArgument.getShips(cc, "ships")
+        val ships = ShipArgument.getShips(cc as VSCS, "ships")
 
         val loaded = cc.source.shipWorld.loadedShips
 
@@ -223,7 +259,7 @@ object VMCommands {
     }
 
     private fun setGravityForConnectedAndTouching(cc: CommandContext<CommandSourceStack>): Int {
-        val ships = ShipArgument.getShips(cc, "ships")
+        val ships = ShipArgument.getShips(cc as VSCS, "ships")
 
         val loaded = cc.source.shipWorld.loadedShips
 
@@ -245,7 +281,7 @@ object VMCommands {
     }
 
     private fun resetGravityFor(cc: CommandContext<CommandSourceStack>): Int {
-        val ships = ShipArgument.getShips(cc, "ships")
+        val ships = ShipArgument.getShips(cc as VSCS, "ships")
 
         val loaded = cc.source.shipWorld.loadedShips
 
@@ -305,10 +341,11 @@ object VMCommands {
         fun clearVmodAttachments(cc: CommandContext<CommandSourceStack>): Int {
             val level = cc.source.level
             level.shipObjectWorld.loadedShips.forEach {
-                it.getAttachment(GravityController::class.java)?.let { _ -> it.setAttachment(GravityController::class.java, null) }
-                it.getAttachment(PhysgunController::class.java)?.let { _ -> it.setAttachment(PhysgunController::class.java, null) }
-                it.getAttachment(CustomMassSave::class.java)?.let { _ -> it.setAttachment(CustomMassSave::class.java, null) }
-                it.getAttachment(WeightSynchronizer::class.java)?.let { _ -> it.setAttachment(WeightSynchronizer::class.java, null) }
+                it.getAttachment(GravityController::class.java)?.let { _ -> it.saveAttachment(GravityController::class.java, null) }
+                it.getAttachment(PhysgunController::class.java)?.let { _ -> it.saveAttachment(PhysgunController::class.java, null) }
+                it.getAttachment(ThrustersController::class.java)?.let { _ -> it.saveAttachment(ThrustersController::class.java, null) }
+                it.getAttachment(CustomMassSave::class.java)?.let { _ -> it.saveAttachment(CustomMassSave::class.java, null) }
+                it.getAttachment(WeightSynchronizer::class.java)?.let { _ -> it.saveAttachment(WeightSynchronizer::class.java, null) }
             }
             return 0
         }
@@ -316,7 +353,7 @@ object VMCommands {
         fun deletePhysEntities(cc: CommandContext<CommandSourceStack>): Int {
             val level = cc.source.level
 
-            val entities = level.shipObjectWorld.retrieveLoadedPhysicsEntities().keys.toList().sorted()
+            val entities = (level.shipObjectWorld as ShipObjectWorldAccessor).shipIdToPhysEntity.keys.toList().sorted()
             entities.forEach {
                 try {
                     level.shipObjectWorld.deletePhysicsEntity(it)
@@ -326,6 +363,41 @@ object VMCommands {
 
             return 0
         }
+
+        fun pruneShipyardChunks(cc: CommandContext<CommandSourceStack>): Int { thread(true, true) {
+            cc.source.server.allLevels.forEach { level ->
+            val path = (((level.chunkSource.chunkMap as ChunkStorageAccessor).`vmod$getWorker`() as IOWorkerAccessor).`vmod$getStorage`() as RegionFileStorageAccessor).`vmod$getPath`()
+
+            if (path.notExists()) return@forEach
+
+            val regionsToCheck = path.listDirectoryEntries()
+                .map { it.fileName.name }
+                .filter { it.startsWith("r.") && it.endsWith(".mca") }
+                .map { it.removePrefix("r.").removeSuffix(".mca") }
+                .mapNotNull { try { it.split(".").map { it.toInt() }.let { Pair(it[0], it[1]) } } catch (_: Exception) {null} }
+                .map { (x, z) -> Pair(ChunkPos.minFromRegion(x, z), ChunkPos.maxFromRegion(x, z)) }
+                .filter { (min, max) -> level.isChunkInShipyard(min.x, min.z) || level.isChunkInShipyard(max.x, max.z) }
+
+            for ((i, bounds) in regionsToCheck.withIndex()) {
+                var allUnused = true
+                for (cPos in ChunkPos.rangeClosed(bounds.first, bounds.second)) {
+                    if (level.getShipManagingPos(cPos) == null) {continue}
+                    allUnused = false
+                    break
+                }
+                if (allUnused) {
+                    val regX = bounds.first.regionX
+                    val regZ = bounds.first.regionZ
+                    val path = path.resolve("r.$regX.${regZ}.mca")
+                    path.deleteIfExists()
+                    DLOG("Dimension: ${level.dimensionId} | Removed region ${bounds.first.regionX}.${bounds.first.regionZ} | ${i+1}/${regionsToCheck.size}")
+                } else {
+                    DLOG("Dimension: ${level.dimensionId} | Processed ${i+1}/${regionsToCheck.size}")
+                }
+            }
+            } }
+            return 0
+        }
     }
 
     private object DEBUG {
@@ -333,6 +405,54 @@ object VMCommands {
             RenderingData.server.allIds.forEach {
                 if (RenderingData.server.getRenderer(it) !is DebugRenderer) {return@forEach}
                 RenderingData.server.removeRenderer(it)
+            }
+            return 0
+        }
+
+        fun testGIFLoader(cc: CommandContext<CommandSourceStack>): Int {
+            val bytes = Minecraft.getInstance().resourceManager.getResourceOrThrow(ResourceLocation(MOD_ID, "textures/gif/test_gif2.gif")).open().readAllBytes()
+            thread(isDaemon = true, priority = Thread.MAX_PRIORITY) {
+                val numRounds = 25
+                val ignoreFirstN = 5
+
+                var totalTime = 0L
+                var numFrames = 0
+                var numPixels = 0L
+                for (i in 0 until numRounds) {
+                    ELOG("Started loading round ${i+1} out of $numRounds")
+                    val start = getNow_ms()
+                    val textures = GIFReader.readGifToTexturesFaster(bytes)
+                    val stop = getNow_ms()
+                    ELOG("Stopped loading")
+
+                    textures.forEach { it.image.close() }
+
+                    if (i < ignoreFirstN) continue
+
+                    totalTime += stop - start
+                    numFrames += textures.fold(0) { acc, it -> acc + it.numFrames }
+                    numPixels += textures.fold(0) { acc, it -> acc + it.spriteWidth * it.spriteHeight }
+                }
+
+//                for (i in 0 until numRounds) {
+//                    ELOG("Started loading round ${i+1} out of $numRounds")
+//                    val start = getNow_ms()
+//                    val textures = GIFReader.readGIF(ByteBufferBackedInputStream(Unpooled.wrappedBuffer(bytes).nioBuffer()))
+//                    val stop = getNow_ms()
+//                    ELOG("Stopped loading")
+//
+//                    if (i < ignoreFirstN) continue
+//
+//                    totalTime += stop - start
+//
+//                    numFrames += textures.size
+//                    numPixels += textures.size * textures[0].image.width * textures[0].image.height
+//                }
+
+                ELOG("\nFrames per second: ${numFrames.toFloat() / totalTime * 1000}" +
+                     "\nms per frame: ${totalTime.toFloat() / numFrames}" +
+                     "\nPixels per second: ${(numPixels.toFloat() / totalTime * 1000).toInt()}" +
+                     "\nProcessed frames: $numFrames")
             }
             return 0
         }
@@ -465,20 +585,30 @@ object VMCommands {
                             )
                         )
                     )
-                ).then(
-                    lt("clear-vmod-attachments").executes { OP.clearVmodAttachments(it) }
-                ).then(
-                    lt("delete-phys-entities").executes { OP.deletePhysEntities(it) }
+                ).then(lt("clear-vmod-attachments").executes { OP.clearVmodAttachments(it) }
+                ).then(lt("delete-phys-entities").executes { OP.deletePhysEntities(it) }
+                ).then(lt("prune-shipyard-chunks").executes { OP.pruneShipyardChunks(it) }
                 )
-            ).then(
-                lt("debug")
-                .requires { it.hasPermission(4) }
-                .then(
-                    lt("remove-debug-renderers").executes {
-                        DEBUG.clearDebugRenderers(it)
-                    }
+            ).also {
+                if (!Platform.isDevelopmentEnvironment()) return@also
+                it.then(
+                    lt("debug")
+                        .then(
+                            lt("remove-debug-renderers").executes {
+                                DEBUG.clearDebugRenderers(it)
+                            }
+                        ).then(
+                            lt("test-gif-loader").executes {
+                                DEBUG.testGIFLoader(it)
+                            }
+                        ).then(
+                            lt("call-gc").executes {
+                                System.gc()
+                                0
+                            }
+                        )
                 )
-            )
+            }
         )
     }
 }

@@ -12,9 +12,7 @@ import net.minecraft.network.FriendlyByteBuf
 import net.spaceeye.vmod.VMConfig
 import net.spaceeye.vmod.rendering.RenderingUtils
 import net.spaceeye.vmod.rendering.types.BaseRenderer
-import net.spaceeye.vmod.toolgun.ClientToolGunState
-import net.spaceeye.vmod.toolgun.ClientToolGunState.playerIsUsingToolgun
-import net.spaceeye.vmod.toolgun.ToolgunItem
+import net.spaceeye.vmod.toolgun.VMToolgun
 import net.spaceeye.vmod.toolgun.modes.state.SchemMode
 import net.spaceeye.vmod.utils.RaycastFunctions
 import net.spaceeye.vmod.utils.Ref
@@ -30,6 +28,7 @@ import org.valkyrienskies.core.api.ships.properties.ShipId
 import org.valkyrienskies.core.api.ships.properties.ShipTransform
 import java.awt.Color
 
+//TODO remove?
 class SchemOutlinesRenderer(
     val maxObjectEdge: Vector3d,
     val rotationAngle: Ref<Double>,
@@ -42,9 +41,9 @@ class SchemOutlinesRenderer(
     val raycastDistance = VMConfig.CLIENT.TOOLGUN.MAX_RAYCAST_DISTANCE
 
     override fun renderData(poseStack: PoseStack, camera: Camera, timestamp: Long) {
-        val mode = ClientToolGunState.currentMode
+        val mode = VMToolgun.client.currentMode
         if (mode !is SchemMode) {return}
-        if (!playerIsUsingToolgun()) {return}
+        if (!VMToolgun.client.playerIsUsingToolgun()) {return}
 
         val width = 0.05
 

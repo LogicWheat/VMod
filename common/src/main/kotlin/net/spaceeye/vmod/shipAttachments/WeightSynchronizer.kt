@@ -3,11 +3,10 @@ package net.spaceeye.vmod.shipAttachments
 import com.fasterxml.jackson.annotation.JsonIgnore
 import net.minecraft.core.BlockPos
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.world.level.block.Blocks
 import net.spaceeye.valkyrien_ship_schematics.interfaces.ICopyableForcesInducer
 import net.spaceeye.vmod.events.PersistentEvents
 import net.spaceeye.vmod.utils.ServerObjectsHolder
-import net.spaceeye.vmod.utils.Tuple
-import net.spaceeye.vmod.utils.Tuple3
 import net.spaceeye.vmod.vsStuff.CustomBlockMassManager
 import org.joml.Vector3d
 import org.valkyrienskies.core.api.ships.LoadedServerShip
@@ -22,6 +21,8 @@ import org.valkyrienskies.mod.common.BlockStateInfo
 import org.valkyrienskies.mod.common.getShipObjectManagingPos
 import org.valkyrienskies.mod.common.shipObjectWorld
 import java.util.function.Supplier
+import kotlin.math.max
+import kotlin.math.min
 
 class WeightSynchronizer: ShipPhysicsListener, ServerTickListener, ICopyableForcesInducer {
     var shipId = -1L
@@ -83,30 +84,57 @@ class WeightSynchronizer: ShipPhysicsListener, ServerTickListener, ICopyableForc
             weightPerBlock: Double,
             targetWeight: Double
         ) {
+            val (_, air) = BlockStateInfo.get(Blocks.AIR.defaultBlockState())!!
             val aabb = ship.shipAABB ?: return
+            val wasStatic = ship.isStatic
+            ship.isStatic = true
 
+            CustomBlockMassManager.zeroMass(level, ship)
+
+            var minW =  Double.MAX_VALUE
+            var maxW = -Double.MAX_VALUE
             var defaultTotalMass = 0.0
-            val blocks = mutableListOf<Tuple3<Double, BlockPos, VsiBlockType>>()
+            val mbpos = BlockPos.MutableBlockPos(0, 0, 0)
 
-            for (x in aabb.minX()-1..aabb.maxX()+1) {
-            for (z in aabb.minZ()-1..aabb.maxZ()+1) {
-            for (y in aabb.minY()-1..aabb.maxY()+1) {
-                val bpos = BlockPos(x, y, z)
-                val state = level.getBlockState(bpos)
+            //TODO not efficient, but do i care?
+            if (!syncWeightPerBlock && !resetMassToDefault) {
+                for (x in aabb.minX()-1..aabb.maxX()+1) {
+                for (z in aabb.minZ()-1..aabb.maxZ()+1) {
+                for (y in aabb.minY()-1..aabb.maxY()+1) {
+                    mbpos.set(x, y, z)
+                    val state = level.getBlockState(mbpos)
+                    if (state.isAir) {continue}
+                    val (mass, _) = BlockStateInfo.get(state) ?: continue
+
+                    minW = min(minW, mass)
+                    maxW = max(maxW, mass)
+
+                    defaultTotalMass += mass
+                } } }
+            }
+
+            for (x in aabb.minX() until aabb.maxX()) {
+            for (y in aabb.minY() until aabb.maxY()) {
+            for (z in aabb.minZ() until aabb.maxZ()) {
+                mbpos.set(x, y, z)
+                val state = level.getBlockState(mbpos)
                 if (state.isAir) {continue}
-                val (mass, type) = BlockStateInfo.get(state) ?: continue
-                defaultTotalMass += mass
-                blocks.add(Tuple.of(mass, bpos, type))
-            } } }
+                val (dmass, type) = BlockStateInfo.get(state) ?: continue
 
-            blocks.forEach { (defaultMass, pos, type) ->
-                val mass = if (resetMassToDefault) defaultMass else when (syncWeightPerBlock) {
-                    true -> weightPerBlock
-                    false -> defaultMass / defaultTotalMass * targetWeight
+                val mass = if (syncWeightPerBlock && !resetMassToDefault) {
+                    weightPerBlock
+                } else {
+                    if (resetMassToDefault) {
+                        dmass
+                    } else {
+                        dmass / defaultTotalMass * targetWeight
+                    }
                 }
 
-                CustomBlockMassManager.setCustomMass(level, pos.x, pos.y, pos.z, mass, type, defaultMass, ship)
-            }
+                CustomBlockMassManager.setCustomMass(level, x, y, z, 0.0, mass, air, type, ship)
+            } } }
+
+            ship.isStatic = wasStatic
         }
 
         @Deprecated("ADDING IT TO SHIP WILL MAKE IT ACTIVATE")

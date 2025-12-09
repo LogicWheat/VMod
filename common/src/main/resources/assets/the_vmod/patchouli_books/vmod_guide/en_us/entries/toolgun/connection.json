@@ -1,0 +1,21 @@
+{
+  "id": "toolgun/connection",
+  "icon": "minecraft:book",
+  "category": "the_vmod:toolgun",
+  "sortnum": 1,
+  "name": "Connection Mode",
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "text": "This mode creates a connection (fixed/bearing/free) between 2 objects.$(br)Fixed mode fixes both rotations and distance between hit points$(br)Bearing mode fixes distance, but allows rotation on an axis between points$(br)Free mode fixes just distance, allowing objects freely rotate$(br)",
+      "title": "Connection Mode"
+    },
+    {
+      "type": "the_vmod:gif_page",
+      "text": "some text",
+      "images": [
+        "the_vmod:patchouli_assets/en_us/toolgun/gifs/test_gif4.gif"
+      ]
+    }
+  ]
+}

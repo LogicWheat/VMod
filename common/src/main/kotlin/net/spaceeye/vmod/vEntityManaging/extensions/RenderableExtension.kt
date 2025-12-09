@@ -56,6 +56,7 @@ open class RenderableExtension(): VEntityExtension {
             val type = tag.getString("rendererType")
             renderer = RenderingTypes.strTypeToSupplier(type).get()
             (renderer as ReflectableObject).tDeserialize(tag.getCompound("renderer"))
+            renderer = renderer.tryUpdate()
         } catch (e: Exception) { ELOG("FAILED TO DESERIALIZE RENDERER WITH EXCEPTION\n${e.stackTraceToString()}"); return false
         } catch (e: Error) { ELOG("FAILED TO DESERIALIZE RENDERER WITH ERROR\n${e.stackTraceToString()}"); return false}
 
@@ -65,7 +66,7 @@ open class RenderableExtension(): VEntityExtension {
     override fun onMakeVEntity(level: ServerLevel) {
         val ids = obj.attachedToShips()
         RenderingData.server.removeRenderer(rID)
-        rID = RenderingData.server.addRenderer(ids, renderer)
+        rID = RenderingData.server.addRenderer(ids, renderer, obj.dimensionId)
     }
 
     override fun onDeleteVEntity(level: ServerLevel) {

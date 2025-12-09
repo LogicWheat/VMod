@@ -1,0 +1,64 @@
+{
+  "id": "physgun/controls",
+  "icon": "minecraft:book",
+  "category": "the_vmod:physgun",
+  "name": "Controls",
+  "pages": [
+    {
+      "type": "the_vmod:gif_page",
+      "text": "Hold LMB to grab an object",
+      "title": "Controls",
+      "images": [
+        "the_vmod:patchouli_assets/en_us/physgun/gifs/physgun1.gif"
+      ]
+    },
+    {
+      "type": "the_vmod:gif_page",
+      "text": "Scroll the scroll wheel to increase/decrease distance",
+      "images": [
+        "the_vmod:patchouli_assets/en_us/physgun/gifs/physgun2.gif"
+      ]
+    },
+    {
+      "type": "the_vmod:gif_page",
+      "text": "Press RMB to freeze object in place",
+      "images": [
+        "the_vmod:patchouli_assets/en_us/physgun/gifs/physgun3.gif"
+      ]
+    },
+    {
+      "type": "the_vmod:gif_page",
+      "text": "Hold E while grabbing an object to rotate it with mouse",
+      "images": [
+        "the_vmod:patchouli_assets/en_us/physgun/gifs/physgun4.gif"
+      ]
+    },
+    {
+      "type": "the_vmod:gif_page",
+      "images": [
+        "the_vmod:patchouli_assets/en_us/physgun/gifs/physgun5.gif"
+      ]
+    },
+    {
+      "type": "the_vmod:gif_page",
+      "text": "Press R while looking at an object to unfreeze it",
+      "images": [
+        "the_vmod:patchouli_assets/en_us/physgun/gifs/physgun6.gif"
+      ]
+    },
+    {
+      "type": "the_vmod:gif_page",
+      "text": "Press R while holding an object to unfreeze all connected objects",
+      "images": [
+        "the_vmod:patchouli_assets/en_us/physgun/gifs/physgun7.gif"
+      ]
+    },
+    {
+      "type": "the_vmod:gif_page",
+      "text": "Press scroll wheel while holding an object to freeze all connected objects",
+      "images": [
+        "the_vmod:patchouli_assets/en_us/physgun/gifs/physgun8.gif"
+      ]
+    }
+  ]
+}

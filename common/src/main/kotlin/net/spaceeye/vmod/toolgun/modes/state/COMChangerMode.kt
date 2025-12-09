@@ -32,7 +32,7 @@ class COMChangerMode: ExtendableToolgunMode(), COMChangerGUI, COMChangerHUD {
             val (mass, type) = BlockStateInfo.get(state) ?: continue
             totalMass += mass
 
-            CustomBlockMassManager.setCustomMass(level, x, y, z, 0.0, type, mass, ship)
+            CustomBlockMassManager.setCustomMass(level, x, y, z, 0.0, mass, type, type, ship)
         } } }
 
         CustomBlockMassManager.setCustomMass(level, pos.x, pos.y, pos.z, totalMass)
@@ -51,7 +51,7 @@ class COMChangerMode: ExtendableToolgunMode(), COMChangerGUI, COMChangerHUD {
             if (state.isAir) {continue}
             val (mass, type) = BlockStateInfo.get(state) ?: continue
 
-            CustomBlockMassManager.setCustomMass(level, x, y, z, mass, type, mass, ship)
+            CustomBlockMassManager.setCustomMass(level, x, y, z, mass, mass, type, type, ship)
             CustomBlockMassManager.removeCustomMass(level.dimensionId, x, y, z)
         } } }
     }

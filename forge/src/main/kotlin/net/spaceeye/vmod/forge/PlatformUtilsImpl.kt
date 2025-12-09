@@ -7,7 +7,7 @@ import net.spaceeye.vmod.config.AbstractConfigBuilder
 
 object PlatformUtilsImpl {
     @JvmStatic
-    fun getConfigBuilder(): AbstractConfigBuilder = ForgeConfigBuilder()
+    fun getConfigBuilder(name: String): AbstractConfigBuilder = ForgeConfigBuilder(name)
 
     @JvmStatic
     fun initScreen(screen: Screen) {

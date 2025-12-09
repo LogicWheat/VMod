@@ -3,9 +3,11 @@ package net.spaceeye.vmod.utils
 import net.minecraft.core.BlockPos
 import net.minecraft.network.FriendlyByteBuf
 import org.joml.Vector3ic
+import net.minecraft.world.level.ChunkPos
 import org.joml.Vector4d
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sign
 
 typealias JVector3d  = org.joml.Vector3d
 typealias JVector3f  = org.joml.Vector3f
@@ -50,6 +52,7 @@ class Vector3d(x:Number, y:Number, z:Number) {
     fun toArray() = arrayOf(x, y, z)
     fun toBlockPos() = BlockPos(x, y, z)
     fun toMCVec3() = MCVec3(x, y, z)
+    fun toChunkPos() = ChunkPos(x.toInt() shr 4, z.toInt() shr 4)
 
     fun copy() = Vector3d(x, y, z)
 
@@ -95,10 +98,7 @@ class Vector3d(x:Number, y:Number, z:Number) {
     fun distTo(other: Vector3d): Double = (this - other).dist()
 
     fun sign(): Vector3d {
-        return Vector3d(
-        if (x < 0) {-1.0} else {1.0},
-        if (y < 0) {-1.0} else {1.0},
-        if (z < 0) {-1.0} else {1.0})
+        return Vector3d(x.sign, y.sign, z.sign)
     }
 
     fun normalize(length: Number, dest: Vector3d): Vector3d {
