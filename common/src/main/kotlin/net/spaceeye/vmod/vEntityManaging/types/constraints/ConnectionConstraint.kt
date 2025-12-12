@@ -8,12 +8,11 @@ import net.spaceeye.vmod.utils.*
 import net.spaceeye.vmod.utils.vs.*
 import org.joml.Quaterniond
 import org.valkyrienskies.core.api.ships.properties.ShipId
-import org.valkyrienskies.core.api.util.PhysTickOnly
-import org.valkyrienskies.core.internal.joints.VSD6Joint
 import org.valkyrienskies.core.internal.joints.VSDistanceJoint
+import org.valkyrienskies.core.internal.joints.VSFixedJoint
 import org.valkyrienskies.core.internal.joints.VSJointMaxForceTorque
 import org.valkyrienskies.core.internal.joints.VSJointPose
-import java.util.EnumMap
+import org.valkyrienskies.core.internal.joints.VSRevoluteJoint
 
 class ConnectionConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
     //TODO unify and rename values (needs backwards compat)
@@ -107,62 +106,66 @@ class ConnectionConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
         val stiffness = if (stiffness < 0) {null} else {stiffness}
         val damping = if (damping < 0) {null} else {damping}
 
-        val distanceConstraint = if (connectionMode == ConnectionModes.FREE_ORIENTATION) {
-            VSDistanceJoint(
+        if (connectionMode == ConnectionModes.FREE_ORIENTATION) {
+            val c = VSDistanceJoint(
                 shipId1, VSJointPose(sPos1.toJomlVector3d(), Quaterniond()),
                 shipId2, VSJointPose(sPos2.toJomlVector3d(), Quaterniond()),
                 maxForceTorque, distance, distance, stiffness = stiffness, damping = damping
             )
-        } else {
-            VSD6Joint(
-                shipId1, VSJointPose(sPos1.toJomlVector3d(), getHingeRotation(sDir1.normalize())),
-                shipId2, VSJointPose(sPos2.toJomlVector3d(), getHingeRotation(sDir2.normalize())),
-                motions = EnumMap(mapOf(
-                    Pair(VSD6Joint.D6Axis.X, VSD6Joint.D6Motion.LIMITED),
-
-                    Pair(VSD6Joint.D6Axis.TWIST, VSD6Joint.D6Motion.FREE),
-                    Pair(VSD6Joint.D6Axis.SWING1, VSD6Joint.D6Motion.FREE),
-                    Pair(VSD6Joint.D6Axis.SWING2, VSD6Joint.D6Motion.FREE),
-                )),
-                linearLimits = EnumMap(mapOf(
-                    Pair(VSD6Joint.D6Axis.X, VSD6Joint.LinearLimitPair(distance, distance, stiffness = stiffness, damping = damping)))
-                ),
-                maxForceTorque = maxForceTorque
-            )
+            mc(c, level)
+            return@withFutures
         }
-        mc(distanceConstraint, level)
-        if (connectionMode == ConnectionModes.FREE_ORIENTATION) { return@withFutures }
 
-        //TODO do i want limits to rotation constraint?
-        val rotationConstraint = when(connectionMode) {
+        val p11 = sPos1.toJomlVector3d()
+        val p21 = (sPos2 - sDir2 * distance).toJomlVector3d()
+        val p12 = (sPos1 + sDir1 * distance).toJomlVector3d()
+        val p22 = sPos2.toJomlVector3d()
+
+        when (connectionMode) {
             ConnectionModes.FIXED_ORIENTATION -> {
-                VSD6Joint(
-                    shipId1, VSJointPose(sPos1.toJomlVector3d(), sRot1.invert(Quaterniond())),
-                    shipId2, VSJointPose(sPos2.toJomlVector3d(), sRot2.invert(Quaterniond())),
-                    motions = EnumMap(mapOf(
-                        Pair(VSD6Joint.D6Axis.X, VSD6Joint.D6Motion.FREE),
-                        Pair(VSD6Joint.D6Axis.Y, VSD6Joint.D6Motion.FREE),
-                        Pair(VSD6Joint.D6Axis.Z, VSD6Joint.D6Motion.FREE),
-                    )),
-                    maxForceTorque = maxForceTorque
+                val d1 = VSFixedJoint(
+                    shipId1, VSJointPose(p11, sRot1.invert(Quaterniond())),
+                    shipId2, VSJointPose(p21, sRot2.invert(Quaterniond())),
+                    maxForceTorque,
                 )
+                val d2 = VSFixedJoint(
+                    shipId1, VSJointPose(p12, sRot1.invert(Quaterniond())),
+                    shipId2, VSJointPose(p22, sRot2.invert(Quaterniond())),
+                    maxForceTorque,
+                )
+
+                mc(d1, level)
+                mc(d2, level)
             }
             ConnectionModes.HINGE_ORIENTATION -> {
-                VSD6Joint(
-                    shipId1, VSJointPose(sPos1.toJomlVector3d(), getHingeRotation(sDir1)),
-                    shipId2, VSJointPose(sPos2.toJomlVector3d(), getHingeRotation(sDir2)),
-                    motions = EnumMap(mapOf(
-                        Pair(VSD6Joint.D6Axis.X, VSD6Joint.D6Motion.FREE),
-                        Pair(VSD6Joint.D6Axis.Y, VSD6Joint.D6Motion.FREE),
-                        Pair(VSD6Joint.D6Axis.Z, VSD6Joint.D6Motion.FREE),
-                        Pair(VSD6Joint.D6Axis.TWIST, VSD6Joint.D6Motion.FREE)
-                    )),
-                    maxForceTorque = maxForceTorque
+                val d1 = VSDistanceJoint(
+                    shipId1, VSJointPose(p11, Quaterniond()),
+                    shipId2, VSJointPose(p21, Quaterniond()),
+                    maxForceTorque, 0f, 0f, stiffness = stiffness, damping = damping
                 )
-            }
-            ConnectionModes.FREE_ORIENTATION -> throw AssertionError("Impossible Situation")
-        }
+                val d2 = VSDistanceJoint(
+                    shipId1, VSJointPose(p12, Quaterniond()),
+                    shipId2, VSJointPose(p22, Quaterniond()),
+                    maxForceTorque, 0f, 0f, stiffness = stiffness, damping = damping
+                )
 
-        mc(rotationConstraint, level)
+                val r1 = VSRevoluteJoint(
+                    shipId1, VSJointPose(p11, getHingeRotation(sDir1)),
+                    shipId2, VSJointPose(p21, getHingeRotation(sDir2)),
+                    maxForceTorque, driveFreeSpin = true
+                )
+                val r2 = VSRevoluteJoint(
+                    shipId1, VSJointPose(p12, getHingeRotation(sDir1)),
+                    shipId2, VSJointPose(p22, getHingeRotation(sDir2)),
+                    maxForceTorque, driveFreeSpin = true
+                )
+
+                mc(d1, level)
+                mc(d2, level)
+                mc(r1, level)
+                mc(r2, level)
+            }
+            ConnectionModes.FREE_ORIENTATION -> throw AssertionError()
+        }
     }
 }

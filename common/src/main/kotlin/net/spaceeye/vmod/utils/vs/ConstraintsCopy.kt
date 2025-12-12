@@ -3,8 +3,13 @@ package net.spaceeye.vmod.utils.vs
 import net.spaceeye.vmod.utils.JVector3d
 import net.spaceeye.vmod.utils.JVector3dc
 import net.spaceeye.vmod.utils.Vector3d
+import org.joml.Quaterniondc
 import org.joml.Vector3dc
 import org.valkyrienskies.core.api.ships.properties.ShipId
+import org.valkyrienskies.core.internal.joints.VSDistanceJoint
+import org.valkyrienskies.core.internal.joints.VSFixedJoint
+import org.valkyrienskies.core.internal.joints.VSJoint
+import org.valkyrienskies.core.internal.joints.VSJointPose
 
 fun updatePosition(old: Vector3d, oldCenter: Vector3d, newCenter: Vector3d): Vector3d = old - oldCenter + newCenter
 
@@ -21,4 +26,18 @@ fun tryMovePosition(pos: Vector3dc, shipId: Long, mapped: Map<ShipId, Pair<Vecto
 fun tryMovePositionJ(pos: Vector3d, shipId: Long, mapped: Map<ShipId, Pair<JVector3d, JVector3dc>>): Vector3d? {
     val (oldCenter, newCenter) = mapped[shipId] ?: return null
     return pos.sub(oldCenter.x, oldCenter.y, oldCenter.z).add(newCenter.x(), newCenter.y(), newCenter.z())
+}
+
+fun VSJoint.copy(shipId0: ShipId?, pos0: Vector3dc?, rot0: Quaterniondc?, shipId1: ShipId?, pos1: Vector3dc?, rot1: Quaterniondc?): VSJoint {
+    val pos0 = pos0 ?: this.pose0.pos
+    val pos1 = pos1 ?: this.pose1.pos
+    val rot0 = rot0 ?: this.pose0.rot
+    val rot1 = rot1 ?: this.pose1.rot
+    val shipId0 = shipId0 ?: this.shipId0
+    val shipId1 = shipId1 ?: this.shipId1
+    return when (this) {
+        is VSDistanceJoint -> this.copy(shipId0, VSJointPose(pos0, rot0), shipId1, VSJointPose(pos1, rot1))
+        is VSFixedJoint -> this.copy(shipId0, VSJointPose(pos0, rot0), shipId1, VSJointPose(pos1, rot1))
+        else -> throw AssertionError()
+    }
 }

@@ -12,8 +12,8 @@ object ToolgunModes: Registry<BaseMode>() {
         register(RopeMode::class)
         register(HydraulicsMode::class)
         register(PhysRopeMode::class)
-        register(SliderMode::class)
-        register(SyncRotation::class)
+//        register(SliderMode::class)
+//        register(SyncRotation::class)
 //        register(GearMode::class)
 
         register(ThrusterMode::class)

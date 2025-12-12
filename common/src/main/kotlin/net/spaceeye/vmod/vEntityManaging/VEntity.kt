@@ -68,7 +68,7 @@ interface VEntity {
         class HelperFn {
             val futures = mutableListOf<CompletableFuture<Boolean>>()
 
-            fun mc(joint: VSJoint, cIDs: ConcurrentLinkedQueue<VSJointId>, level: ServerLevel, checkValid: ((VSJoint, PhysLevel) -> Boolean)? = null) {
+            fun mc(joint: VSJoint, cIDs: MutableList<VSJointId>, level: ServerLevel, checkValid: ((VSJoint, PhysLevel) -> Boolean)? = null) {
                 futures.add(net.spaceeye.vmod.vEntityManaging.util.mc(joint, cIDs, level, checkValid))
             }
         }

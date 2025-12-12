@@ -7,7 +7,6 @@ object VMAttachments {
     @OptIn(VsBeta::class)
     fun register() {
         vsApi.registerAttachment(PhysgunController::class.java) { useTransientSerializer() }
-        vsApi.registerAttachment(AttachmentAccessor::class.java) { useTransientSerializer() }
         vsApi.registerAttachment(DebugAttachment::class.java) { useTransientSerializer() }
 
         vsApi.registerAttachment(WeightSynchronizer::class.java)
@@ -19,7 +18,6 @@ object VMAttachments {
             GravityController.getOrCreate(ship)
             PhysgunController.getOrCreate(ship)
             CustomMassSave.getOrCreate(ship)
-            AttachmentAccessor.getOrCreate(ship)
         }
 
 
@@ -27,6 +25,5 @@ object VMAttachments {
         WeightSynchronizer
         CustomMassSave
         GravityController
-        AttachmentAccessor
     }
 }

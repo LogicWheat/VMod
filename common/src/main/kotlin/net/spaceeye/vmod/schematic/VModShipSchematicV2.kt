@@ -33,19 +33,15 @@ import org.joml.Vector3d
 import org.joml.Vector3i
 import org.joml.primitives.AABBd
 import org.joml.primitives.AABBi
-import net.spaceeye.vmod.shipAttachments.AttachmentAccessor
-import net.spaceeye.vmod.toolgun.ServerToolGunState
 import net.spaceeye.vmod.toolgun.VMToolgun
 import net.spaceeye.vmod.translate.makeFake
 import net.spaceeye.vmod.utils.vs.posShipToWorld
 import net.spaceeye.vmod.utils.vs.transformDirectionShipToWorld
-import org.apache.logging.log4j.Logger
 import org.valkyrienskies.core.api.VsBeta
 import org.valkyrienskies.core.api.bodies.properties.BodyTransform
 import org.valkyrienskies.core.api.ships.ServerShip
 import org.valkyrienskies.core.api.ships.properties.ShipId
 import org.valkyrienskies.core.impl.game.ShipTeleportDataImpl
-import org.valkyrienskies.core.impl.game.ships.ShipTransformImpl
 import org.valkyrienskies.core.util.toAABBd
 import org.valkyrienskies.mod.api.vsApi
 import org.valkyrienskies.mod.common.dimensionId
@@ -195,8 +191,7 @@ private fun IShipSchematicDataV1.saveAttachments(ships: List<ServerShip>, level:
     val attachments = ships
         .mapNotNull { level.shipObjectWorld.loadedShips.getById(it.id) }
         .map { ship ->
-            //TODO doesn't work
-            Pair(ship, AttachmentAccessor.getOrCreate(ship).forceInducers
+            Pair(ship, ship.getAllAttachments()
             .filterIsInstance<ICopyableForcesInducer>()
             .mapNotNull { ship.getAttachment(it.javaClass) }
             .toMutableList()

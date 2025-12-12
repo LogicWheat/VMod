@@ -16,11 +16,11 @@ import org.valkyrienskies.core.api.ships.properties.ShipId
 import org.valkyrienskies.core.api.world.PhysLevel
 import org.valkyrienskies.core.internal.joints.VSJoint
 import org.valkyrienskies.core.internal.joints.VSJointId
+import java.util.Collections
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ConcurrentLinkedQueue
 
 abstract class TwoShipsMConstraint(): ExtendableVEntity(), VSJointUser {
-    @JsonIgnore val cIDs = ConcurrentLinkedQueue<VSJointId>() // should be used to store VS ids
+    @JsonIgnore val cIDs = Collections.synchronizedList<VSJointId>(mutableListOf()) // should be used to store VS ids
     @JsonIgnore protected var i = 0 // use in get for auto serialization TODO move it to ExtendableVEntity?
 
     abstract var shipId1: Long
@@ -108,7 +108,7 @@ abstract class TwoShipsMConstraint(): ExtendableVEntity(), VSJointUser {
         cIDs.forEach { level.gtpa.removeJoint(it) }
     }
 
-    class HelperFn(val cIDs: ConcurrentLinkedQueue<VSJointId>, val checkValid: ((VSJoint, PhysLevel) -> Boolean)? = null) {
+    class HelperFn(val cIDs: MutableList<VSJointId>, val checkValid: ((VSJoint, PhysLevel) -> Boolean)? = null) {
         val futures = mutableListOf<CompletableFuture<Boolean>>()
 
         fun mc(joint: VSJoint, level: ServerLevel) {
