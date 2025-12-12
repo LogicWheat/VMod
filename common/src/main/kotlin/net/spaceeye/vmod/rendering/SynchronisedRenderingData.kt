@@ -102,7 +102,6 @@ class ServerSynchronisedRenderingData:
     internal val worldRenderingData = ServerWorldSynchronisedRenderingData()
 
     private var idToPages = mutableMapOf<Int, Set<Long>>()
-    private val groundIds: Collection<Long> get() = ServerObjectsHolder.overworldServerLevel!!.shipObjectWorld.dimensionToGroundBodyIdImmutable.values
 
     fun setUpdated(id: Int, renderer: BaseRenderer): Boolean = lock {
         val pages = idToPages[id] ?: return@lock false
@@ -115,7 +114,7 @@ class ServerSynchronisedRenderingData:
     }
 
     fun setRenderer(shipIds: List<ShipId>, id: Int, renderer: BaseRenderer): Int = lock {
-        val idsToUse = shipIds.filter { !groundIds.contains(it) }.also { if (it.isEmpty()) {
+        val idsToUse = shipIds.filter { it != -1L }.also { if (it.isEmpty()) {
             if (renderer !is PositionDependentRenderer) throw RuntimeException("World Renderers should implement PositionDependentRenderer")
             worldRenderingData.setRenderer(id, renderer) ?: return id
             idToPages[id] = setOf(ReservedRenderingPages.WorldRenderingObject)
@@ -127,7 +126,7 @@ class ServerSynchronisedRenderingData:
     }
 
     fun addRenderer(shipIds: List<ShipId>, renderer: BaseRenderer, dimensionId: DimensionId? = null): Int = lock {
-        val idsToUse = shipIds.filter { !groundIds.contains(it) }.also { if (it.isEmpty() || (it.size == 1 && it.contains(-1L))) {
+        val idsToUse = shipIds.filter { it != -1L }.also { if (it.isEmpty() || (it.size == 1 && it.contains(-1L))) {
             if (renderer !is PositionDependentRenderer) throw RuntimeException("World Renderers should implement PositionDependentRenderer")
             if (dimensionId == null) throw RuntimeException("World Renderers need non-null dimensionId")
             val id = worldRenderingData.addRenderer(dimensionId, renderer)

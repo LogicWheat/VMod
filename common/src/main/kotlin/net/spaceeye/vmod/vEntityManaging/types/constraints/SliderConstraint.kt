@@ -13,6 +13,7 @@ import org.valkyrienskies.core.internal.joints.VSD6Joint
 import org.valkyrienskies.core.internal.joints.VSJointMaxForceTorque
 import org.valkyrienskies.core.internal.joints.VSJointPose
 import java.util.EnumMap
+import java.util.concurrent.CompletableFuture
 
 class SliderConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
     //TODO unify and rename values (needs backwards compat)
@@ -83,6 +84,10 @@ class SliderConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
     override fun iOnScaleBy(level: ServerLevel, scaleBy: Double, scalingCenter: Vector3d) {}
 
     override fun iOnMakeVEntity(level: ServerLevel) = withFutures {
+        //TODO
+        futures.add(CompletableFuture<Boolean>().also { it.complete(true) })
+        return@withFutures
+
         if (shipId1 == -1L && shipId2 == -1L) {throw AssertionError("Both shipId's are ground")}
         val (shipId1, shipId2, sPos1, sPos2, sDir1, sDir2, sRot1, sRot2) = when (-1L) {
             shipId1 -> Tuple.of(null   , shipId2, sPos1 + 0.5, sPos2,  sDir1, sDir2, sRot1, sRot2)

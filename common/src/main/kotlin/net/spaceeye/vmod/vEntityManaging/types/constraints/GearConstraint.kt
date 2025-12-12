@@ -13,6 +13,7 @@ import net.spaceeye.vmod.utils.vs.tryMovePosition
 import org.valkyrienskies.core.internal.joints.VSGearJoint
 import org.valkyrienskies.core.internal.joints.VSJointMaxForceTorque
 import org.valkyrienskies.core.internal.joints.VSJointPose
+import java.util.concurrent.CompletableFuture
 
 class GearConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
     override var sPos1: Vector3d by get(i++, Vector3d()).also { it.metadata["NoTagSerialization"] = true }
@@ -78,6 +79,10 @@ class GearConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
     override fun iGetAttachmentPoints(shipId: ShipId): List<Vector3d> { return emptyList() }
 
     override fun iOnMakeVEntity(level: ServerLevel) = withFutures {
+        //TODO
+        futures.add(CompletableFuture<Boolean>().also { it.complete(true) })
+        return@withFutures
+
         if (shipId1 == -1L && shipId2 == -1L) {throw AssertionError("Both shipId's are ground")}
         val (shipId1, shipId2, sPos1, sPos2, sDir1, sDir2, sRot1, sRot2) = when (-1L) {
             shipId1 -> Tuple.of(null   , shipId2, sPos1 + 0.5, sPos2,  sDir1, sDir2, sRot1, sRot2)

@@ -5,6 +5,7 @@ import net.spaceeye.vmod.VM
 import net.spaceeye.vmod.utils.Tuple
 import net.spaceeye.vmod.utils.Tuple3
 import net.spaceeye.vmod.utils.Tuple4
+import net.spaceeye.vmod.utils.Tuple5
 import org.joml.Vector3dc
 import org.valkyrienskies.core.api.VsBeta
 import org.valkyrienskies.core.api.ships.properties.ShipId
@@ -20,6 +21,9 @@ import kotlin.also
 
 val ServerLevel.gtpa get(): MyGameToPhysicsAdapter = VM.dimToGTPA.getOrPut(this.dimensionId) { MyGameToPhysicsAdapter() }
 
+//TODO
+const val MAX_ATTEMPTS = 60*60
+
 @OptIn(VsBeta::class)
 class MyGameToPhysicsAdapter {
     private val invForces    = ConcurrentLinkedQueue<Pair<ShipId, Vector3dc>>()
@@ -29,7 +33,7 @@ class MyGameToPhysicsAdapter {
     private val invPosForces = ConcurrentLinkedQueue<Pair<ShipId, InvForceAtPos>>()
     private val rotPosForces = ConcurrentLinkedQueue<Pair<ShipId, InvForceAtPos>>()
 
-    private val collisionChange = ConcurrentLinkedQueue<Tuple4<ShipId, ShipId, Boolean, CompletableFuture<Boolean>>>()
+    private val collisionChange = ConcurrentLinkedQueue<Tuple5<ShipId, ShipId, Boolean, CompletableFuture<Boolean>, Int>>()
 
     //todo not null
     private val joints = ConcurrentLinkedQueue<Tuple3<VSJoint, ((VSJoint, PhysLevel) -> Boolean)?, CompletableFuture<VSJointId>>>()
@@ -49,13 +53,18 @@ class MyGameToPhysicsAdapter {
         invPosForces.pollUntilEmpty { (id, fPos ) -> level.getShipById(id)?.applyInvariantForceToPos(fPos.force, fPos.pos) }
         rotPosForces.pollUntilEmpty { (id, fPos ) -> level.getShipById(id)?.applyInvariantForceToPos(fPos.force, fPos.pos) }
 
-        collisionChange.pollUntilEmpty { (id1, id2, change, future) ->
-            future.complete(
-                when (change) {
-                    true  -> level.enableCollisionBetween(id1, id2)
-                    false -> level.disableCollisionBetween(id1, id2)
-                }
-            )
+        val rePollCollision = mutableListOf<Tuple5<ShipId, ShipId, Boolean, CompletableFuture<Boolean>, Int>>()
+        collisionChange.pollUntilEmpty { (id1, id2, change, future, attempts) ->
+            val res = when (change) {
+                true  -> level.enableCollisionBetween(id1, id2)
+                false -> level.disableCollisionBetween(id1, id2)
+            }
+            if (!res && attempts < MAX_ATTEMPTS) {
+                rePollCollision.add(Tuple.of(id1, id2, change, future, attempts+1))
+                return@pollUntilEmpty
+            }
+
+            future.complete(res)
         }
 
         val rePoll = mutableListOf<Tuple3<VSJoint, ((VSJoint, PhysLevel) -> Boolean)?, CompletableFuture<VSJointId>>>()
@@ -87,6 +96,6 @@ class MyGameToPhysicsAdapter {
     fun addJoint(joint: VSJoint, checkValid: ((VSJoint, PhysLevel) -> Boolean)? = null): CompletableFuture<VSJointId> = CompletableFuture<VSJointId>().also { joints.add(Tuple.of(joint, checkValid, it)) }
     fun updateJoint(id: VSJointId, joint: VSJoint): CompletableFuture<Boolean> = CompletableFuture<Boolean>().also { updatedJoints.add(Tuple.of(id, joint, it)) }
     fun removeJoint(id: VSJointId): CompletableFuture<Boolean> = CompletableFuture<Boolean>().also { deletedJoints.add(id to it) }
-    fun disableCollisionBetweenBodies(id1: ShipId, id2: ShipId): CompletableFuture<Boolean> = CompletableFuture<Boolean>().also { collisionChange.add(Tuple.of(id1, id2, false, it)) }
-    fun enableCollisionBetweenBodies (id1: ShipId, id2: ShipId): CompletableFuture<Boolean> = CompletableFuture<Boolean>().also { collisionChange.add(Tuple.of(id1, id2, true, it)) }
+    fun disableCollisionBetweenBodies(id1: ShipId, id2: ShipId): CompletableFuture<Boolean> = CompletableFuture<Boolean>().also { collisionChange.add(Tuple.of(id1, id2, false, it, 0)) }
+    fun enableCollisionBetweenBodies (id1: ShipId, id2: ShipId): CompletableFuture<Boolean> = CompletableFuture<Boolean>().also { collisionChange.add(Tuple.of(id1, id2, true, it, 0)) }
 }

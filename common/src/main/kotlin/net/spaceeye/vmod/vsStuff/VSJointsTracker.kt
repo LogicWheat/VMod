@@ -91,7 +91,7 @@ object VSJointsTracker: ServerClosable() {
 
     @JvmStatic
     private fun screenShipId(shipId: ShipId?): ShipId? {
-        if (shipId == null || ServerObjectsHolder.shipObjectWorld!!.dimensionToGroundBodyIdImmutable.values.contains(shipId)) {return null}
+        if (shipId == null) {return null}
         return shipId
     }
 

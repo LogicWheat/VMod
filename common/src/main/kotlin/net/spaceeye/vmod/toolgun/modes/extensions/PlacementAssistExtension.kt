@@ -356,7 +356,7 @@ interface PlacementAssistServerPart {
         val rpoint1 = Vector3d(rpoint2) + dir2.normalize() * paDistanceFromBlock
 
         val shipId1: ShipId = ship1.id
-        val shipId2: ShipId = ship2?.id ?: level.shipObjectWorld.dimensionToGroundBodyIdImmutable[level.dimensionId]!!
+        val shipId2: ShipId = ship2?.id ?: -1L
 
         val ventity = paVEntityBuilder(spoint1, spoint2, rpoint1, rpoint2, ship1, ship2, shipId1, shipId2, Pair(paFirstResult, paSecondResult), paDistanceFromBlock)
         level.makeVEntity(ventity){it.addForVMod(player)}
@@ -437,7 +437,7 @@ interface PlacementAssistServerPart {
         val rpoint1 = Vector3d(rpoint2) + dir2.normalize() * paDistanceFromBlock
 
         val shipId1: ShipId = ship1.id
-        val shipId2: ShipId = ship2?.id ?: level.shipObjectWorld.dimensionToGroundBodyIdImmutable[level.dimensionId]!!
+        val shipId2: ShipId = ship2?.id ?: -1L
 
         val ventity = paVEntityBuilder(spoint1, spoint2, rpoint1, rpoint2, ship1, ship2, shipId1, shipId2, Pair(paFirstResult, paSecondResult), paDistanceFromBlock)
         level.makeVEntity(ventity){it.addForVMod(player)}

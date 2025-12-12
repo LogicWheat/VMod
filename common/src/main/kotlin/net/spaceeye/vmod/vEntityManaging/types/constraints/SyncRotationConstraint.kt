@@ -12,6 +12,7 @@ import org.valkyrienskies.core.internal.joints.VSD6Joint
 import org.valkyrienskies.core.internal.joints.VSJointMaxForceTorque
 import org.valkyrienskies.core.internal.joints.VSJointPose
 import java.util.EnumMap
+import java.util.concurrent.CompletableFuture
 
 class SyncRotationConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
     override var sPos1: Vector3d get() = Vector3d(); set(_) {}
@@ -46,6 +47,10 @@ class SyncRotationConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
     override fun iGetAttachmentPoints(shipId: ShipId): List<Vector3d> = emptyList()
 
     override fun iOnMakeVEntity(level: ServerLevel) = withFutures {
+        //TODO
+        futures.add(CompletableFuture<Boolean>().also { it.complete(true) })
+        return@withFutures
+
         if (shipId1 == -1L && shipId2 == -1L) {throw AssertionError("Both shipId's are ground")}
         val (shipId1, shipId2, sRot1, sRot2) = when (-1L) {
             shipId1 -> Tuple.of(null   , shipId2, sRot1, sRot2)

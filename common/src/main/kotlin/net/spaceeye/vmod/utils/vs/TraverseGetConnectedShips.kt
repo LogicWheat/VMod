@@ -17,11 +17,8 @@ data class TraversedData(
 )
 
 fun traverseGetAllTouchingShips(level: ServerLevel, shipId: ShipId, blacklist: Set<ShipId> = setOf(), withJointInfo: Boolean = false): Set<ShipId> {
-    val dimensionIds = level.shipObjectWorld.dimensionToGroundBodyIdImmutable.values.toSet()
-
     val stack = mutableListOf<ShipId>(shipId)
-    val traversedShips = mutableSetOf<ShipId>()
-    traversedShips.addAll(dimensionIds)
+    val traversedShips = mutableSetOf<ShipId>(-1L)
     traversedShips.addAll(blacklist)
 
     while (stack.isNotEmpty()) {
@@ -41,7 +38,7 @@ fun traverseGetAllTouchingShips(level: ServerLevel, shipId: ShipId, blacklist: S
             .filter { !traversedShips.contains(it) }
         )
     }
-    traversedShips.removeAll(dimensionIds)
+    traversedShips.remove(-1L)
     traversedShips.removeAll(blacklist)
 
     return traversedShips
@@ -49,11 +46,9 @@ fun traverseGetAllTouchingShips(level: ServerLevel, shipId: ShipId, blacklist: S
 
 fun traverseGetConnectedShips(shipId: ShipId, blacklist: Set<ShipId> = setOf(), withJointInfo: Boolean = false): TraversedData {
     val instance = VEntityManager.getInstance()
-    val dimensionIds = ServerObjectsHolder.server!!.shipObjectWorld.dimensionToGroundBodyIdImmutable.values
 
     val stack = mutableListOf<ShipId>(shipId)
-    val traversedShips = mutableSetOf<ShipId>()
-    traversedShips.addAll(dimensionIds)
+    val traversedShips = mutableSetOf<ShipId>(-1)
     traversedShips.addAll(blacklist)
 
     val traversedVEntities = mutableSetOf<Int>()
@@ -86,7 +81,7 @@ fun traverseGetConnectedShips(shipId: ShipId, blacklist: Set<ShipId> = setOf(), 
             traversedVSJoints.addAll(constraintIds)
         }
     }
-    traversedShips.removeAll(dimensionIds.toSet())
+    traversedShips.remove(-1)
     traversedShips.removeAll(blacklist)
 
     return TraversedData(traversedShips, traversedVEntities, traversedVSJoints)

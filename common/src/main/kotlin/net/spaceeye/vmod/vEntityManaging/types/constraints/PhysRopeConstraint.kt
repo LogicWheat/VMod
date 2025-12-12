@@ -12,6 +12,7 @@ import net.spaceeye.vmod.utils.getVector3d
 import net.spaceeye.vmod.utils.linspace
 import net.spaceeye.vmod.utils.putQuatd
 import net.spaceeye.vmod.utils.putVector3d
+import net.spaceeye.vmod.utils.vs.gtpa
 import net.spaceeye.vmod.utils.vs.posShipToWorld
 import net.spaceeye.vmod.utils.vs.tryMovePosition
 import net.spaceeye.vmod.vEntityManaging.VEntity
@@ -25,8 +26,12 @@ import org.valkyrienskies.core.internal.physics.PhysicsEntityServer
 import org.valkyrienskies.core.internal.physics.VSCapsuleCollisionShapeData
 import org.valkyrienskies.core.impl.game.ships.ShipInertiaDataImpl
 import org.valkyrienskies.core.impl.game.ships.ShipTransformImpl
+import org.valkyrienskies.core.internal.joints.VSDistanceJoint
+import org.valkyrienskies.core.internal.joints.VSJointMaxForceTorque
+import org.valkyrienskies.core.internal.joints.VSJointPose
 import org.valkyrienskies.mod.common.dimensionId
 import org.valkyrienskies.mod.common.shipObjectWorld
+import java.util.concurrent.CompletableFuture
 import kotlin.math.PI
 
 class PhysRopeConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
@@ -186,10 +191,8 @@ class PhysRopeConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
     }
 
     private fun makeData(level: ServerLevel): Boolean {
-        val dimensionIds = level.shipObjectWorld.dimensionToGroundBodyIdImmutable.values
-
-        val rPos1 = if (dimensionIds.contains(shipId1)) {sPos1.copy()} else { posShipToWorld(level.shipObjectWorld.allShips.getById(shipId1), sPos1) }
-        val rPos2 = if (dimensionIds.contains(shipId2)) {sPos2.copy()} else { posShipToWorld(level.shipObjectWorld.allShips.getById(shipId2), sPos2) }
+        val rPos1 = if (shipId1 == -1L) {sPos1.copy()} else { posShipToWorld(level.shipObjectWorld.allShips.getById(shipId1), sPos1) }
+        val rPos2 = if (shipId2 == -1L) {sPos2.copy()} else { posShipToWorld(level.shipObjectWorld.allShips.getById(shipId2), sPos2) }
 
         val rDir = (rPos1 - rPos2).normalize()
 
@@ -218,62 +221,52 @@ class PhysRopeConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
                 ShipTransformImpl.create(pos.toJomlVector3d(), org.joml.Vector3d(), rot, org.joml.Vector3d()),
                 ShipInertiaDataImpl(org.joml.Vector3d(), massPerSegment, tensor.get(Matrix3d())),
                 org.joml.Vector3d(), org.joml.Vector3d(),
-                VSCapsuleCollisionShapeData(radius, linkLength)
+                VSCapsuleCollisionShapeData(radius, linkLength),
+                isStatic = true
             ))
         }
         return true
     }
 
-    private fun makeConstraints(level: ServerLevel): Boolean {
+    //TODO
+    private fun makeConstraints(level: ServerLevel) = withFutures {
         val dir = Vector3d(1, 0, 0)
         val stiffness = if (stiffness <= 0) { Float.MAX_VALUE } else { stiffness }
-        val maxForce = (if (maxForce < 0) { Float.MAX_VALUE } else { maxForce }).toDouble()
-        val compliance = (1f / stiffness).toDouble()
+        val maxForceTorque = if (maxForce < 0) {null} else {VSJointMaxForceTorque(maxForce, maxForce)}
 
         var prevId = shipId1
         var prevPos = sPos1
         var prevDir = -sDir1
 
-        val minAngle = -angleLimit / 2.0
-        val maxAngle =  angleLimit / 2.0
+        val minAngle = (-angleLimit / 2.0).toFloat()
+        val maxAngle = ( angleLimit / 2.0).toFloat()
 
-        //TODO
-//        entities.forEach { entity ->
-//            val length = (entity.collisionShapeData as VSCapsuleCollisionShapeData).length
-//            val radius = (entity.collisionShapeData as VSCapsuleCollisionShapeData).radius
-//
-//            cIDs.add(level.shipObjectWorld.createNewConstraint(VSSphericalTwistLimitsConstraint(
-//                prevId, entity.id, compliance,
-//                getHingeRotation(prevDir),
-//                getHingeRotation(dir),
-//                maxForce,
-//                minAngle, maxAngle
-//            )) ?: run { return false })
-//
-//            cIDs.add(level.shipObjectWorld.createNewConstraint(VSRopeConstraint(
-//                prevId, entity.id, compliance, prevPos.toJomlVector3d(), (dir * (length + radius)).toJomlVector3d(), maxForce, 0.0
-//            )) ?: run { return false })
-//            level.shipObjectWorld.disableCollisionBetweenBodies(prevId, entity.id)
-//
-//            prevId = entity.id
-//            prevPos = (-dir * (length + radius))
-//            prevDir = dir
-//        }
-//
-//        cIDs.add(level.shipObjectWorld.createNewConstraint(VSSphericalTwistLimitsConstraint(
-//            prevId, shipId2, compliance,
-//            getHingeRotation(prevDir),
-//            getHingeRotation(sDir2),
-//            maxForce,
-//            minAngle, maxAngle
-//        )) ?: run { return false })
-//
-//        cIDs.add(level.shipObjectWorld.createNewConstraint(VSRopeConstraint(
-//            prevId, shipId2, compliance, prevPos.toJomlVector3d(), sPos2.toJomlVector3d(), maxForce, 0.0
-//        )) ?: run { return false })
-//        level.shipObjectWorld.disableCollisionBetweenBodies(prevId, shipId2)
+        val limit = null//VSD6Joint.AngularLimitPair(minAngle, maxAngle)
 
-        return true
+        entities.forEach { entity ->
+            val length = (entity.collisionShapeData as VSCapsuleCollisionShapeData).length
+            val radius = (entity.collisionShapeData as VSCapsuleCollisionShapeData).radius
+
+            mc(VSDistanceJoint(
+                prevId,    VSJointPose(prevPos.toJomlVector3d(),                   getHingeRotation(prevDir)),
+                entity.id, VSJointPose((dir * (length + radius)).toJomlVector3d(), getHingeRotation(dir)),
+                maxForceTorque,
+                0f, 0f//limit
+            ), level)
+            futures.add(level.gtpa.disableCollisionBetweenBodies(prevId, entity.id))
+
+            prevId = entity.id
+            prevPos = (-dir * (length + radius))
+            prevDir = dir
+        }
+
+        mc(VSDistanceJoint(
+            prevId,  VSJointPose(prevPos.toJomlVector3d(), getHingeRotation(prevDir)),
+            shipId2, VSJointPose(sPos2  .toJomlVector3d(), getHingeRotation(sDir2)),
+            maxForceTorque,
+            0f, 0f//limit
+        ), level)
+        futures.add(level.gtpa.disableCollisionBetweenBodies(prevId, shipId2))
     }
 
     override fun iNbtSerialize(): CompoundTag? {
@@ -337,12 +330,13 @@ class PhysRopeConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
         return data.copy(shipId = level.shipObjectWorld.allocateShipId(level.dimensionId))
     }
 
-    override fun iOnMakeVEntity(level: ServerLevel) = withFutures {
-        return@withFutures
+    override fun iOnMakeVEntity(level: ServerLevel): List<CompletableFuture<Boolean>> {
         //TODO
-//        if (data.isEmpty()) { if (!makeData(level)) return false }
-//        entities = data.map { level.shipObjectWorld.createPhysicsEntity(shipIdCheck(level, it), level.dimensionId) }.toMutableList()
-//        return makeConstraints(level)
+        return listOf(CompletableFuture<Boolean>().also { it.complete(true) })
+
+        if (data.isEmpty()) { if (!makeData(level)) return emptyList() }
+        entities = data.map { level.shipObjectWorld.createPhysicsEntity(shipIdCheck(level, it), level.dimensionId) }.toMutableList()
+        return makeConstraints(level)
     }
 
     override fun iOnDeleteVEntity(level: ServerLevel) {
