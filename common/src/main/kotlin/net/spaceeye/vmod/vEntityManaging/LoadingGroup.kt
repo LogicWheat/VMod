@@ -31,7 +31,6 @@ internal class LoadingGroup(
         shipRefs.computeIfAbsent(ship.id) {ship}
         shipDataStatus.computeIfAbsent(ship.id) {ShipData.fromShip(ship)}
         ship.isStatic = true // so that ships don't drift while ships are being loaded
-        println("set static ${ship.id} ${ship.isStatic}")
 
         if (neededShipIds.isEmpty()) {
             applyVEntities()
@@ -42,10 +41,8 @@ internal class LoadingGroup(
     private fun applyVEntities() {
         val finishFn = {
             for ((_, ship) in shipRefs) {
-                println("here")
                 val data = shipDataStatus[ship.id] ?: continue
 
-                println("set ship ${ship.id} ${data.isStatic}")
                 ship.isStatic = data.isStatic
                 level.shipObjectWorld.teleportShip(ship, ShipTeleportDataImpl(
                     ship.transform.positionInWorld, ship.transform.shipToWorldRotation,
