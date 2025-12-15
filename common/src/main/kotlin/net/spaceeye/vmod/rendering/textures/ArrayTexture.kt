@@ -5,6 +5,8 @@ import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.vertex.PoseStack
 import com.mojang.blaze3d.vertex.Tesselator
 import com.mojang.blaze3d.vertex.VertexFormat
+import net.spaceeye.vmod.ELOG
+import net.spaceeye.vmod.ILOG
 import net.spaceeye.vmod.OnFinalize
 import net.spaceeye.vmod.rendering.RenderTypes
 import net.spaceeye.vmod.rendering.RenderingUtils
@@ -21,6 +23,9 @@ open class ArrayTexture(ptr: Long, val width: Int, val height: Int, val numLayer
         private set
 
     private var uploaded = false
+
+    var closed: Boolean = false
+        private set
 
     protected inline fun onRenderThread(crossinline fn: () -> Unit) {
         if (RenderSystem.isOnRenderThread()) {
@@ -63,8 +68,10 @@ open class ArrayTexture(ptr: Long, val width: Int, val height: Int, val numLayer
     }
 
     fun close() = onRenderThread {
+        closed = true
         TextureUtil.releaseTextureId(id)
         freeRAM()
+        id = -1
     }
 
     fun freeRAM() {
@@ -74,6 +81,7 @@ open class ArrayTexture(ptr: Long, val width: Int, val height: Int, val numLayer
     }
 
     override fun onFinalize() {
+        if (closed) return
         close()
     }
 

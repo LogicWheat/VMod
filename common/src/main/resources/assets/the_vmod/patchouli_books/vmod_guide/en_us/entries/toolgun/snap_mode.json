@@ -1,0 +1,26 @@
+{
+  "id": "toolgun/snap_mode",
+  "icon": "minecraft:book",
+  "category": "the_vmod:toolgun",
+  "name": "Snap Mode",
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "text": "In certain modes (Connection/Hydraulics) there exists a \"Snap Mode\", usually as a secondary toolgun mode. This mode allows you to snap one ship to another. It also respects \"HitPos Modes\".$(br)To use: 1. Set position of the first ship. 2. Set to which position snap second ship. 3. Use scroll wheel to rotate first ship, before finalizing.$(br)Custom Parameters:$(li)$(l)Distance From Block$() - Final distance from block.$(li)$(l)Snap Mode Scroll Step$() - Scroll wheel step in degrees. ",
+      "title": "Snap Mode"
+    },
+    {
+      "type": "the_vmod:gif_page",
+      "images": [
+        "the_vmod:patchouli_assets/en_us/toolgun/gifs/snap_mode_1.gif"
+      ]
+    },
+    {
+      "type": "the_vmod:gif_page",
+      "text": "Snap mode with distance from block of 4",
+      "images": [
+        "the_vmod:patchouli_assets/en_us/toolgun/gifs/snap_mode_2.gif"
+      ]
+    }
+  ]
+}

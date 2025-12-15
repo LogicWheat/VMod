@@ -9,10 +9,11 @@ import java.io.FileNotFoundException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.LinkedBlockingQueue
 import kotlin.concurrent.thread
+import kotlin.math.max
 
 object GIFManager {
     private val toLoad = LinkedBlockingQueue<Pair<ResourceLocation, GIFTexture>>()
-    private val toUnload = LinkedBlockingQueue<Pair<String, Long>>()
+    private val toUnload = ConcurrentHashMap<String, Long>()
     private val processing = ConcurrentHashMap.newKeySet<ResourceLocation>()
     init {
         thread(isDaemon = true, name = "VMod GIF Textures loader", priority = Thread.MAX_PRIORITY, block = ::loadThread)
@@ -48,28 +49,28 @@ object GIFManager {
     private var timeUnused = 1000L
     private var doUnload = true
 
-    //TODO i don't like it
+    //TODO I don't entirely like it
     @JvmStatic private fun unloadThread() {
-        val temp = ArrayDeque<Pair<String, Long>>()
         while (true) {
             Thread.sleep(1000L)
-            temp.add(toUnload.take()) //will await until toUnload is not empty
-            toUnload.drainTo(temp) //will drain the rest
+            //add conditional variables here maybe
+            if (toUnload.isEmpty()) continue
             synchronized(storage) {
+            synchronized(toUnload) {
                 if (!doUnload) return@synchronized
                 val now = getNow_ms()
-                temp.forEach {
-                    val (usages, lastUsed, texture) = storage[it.first] ?: return@forEach
+                val toRemoveKeys = mutableListOf<String>()
+                toUnload.forEach { (k, v) ->
+                    val (usages, lastUsed, texture) = storage[k] ?: return@forEach
                     if (usages != 0) { return@forEach }
-                    if (now - it.second < timeUnused || now - lastUsed < timeUnused) {
-                        toUnload.add(it)
-                        return@forEach
-                    }
-                    storage.remove(it.first)
+                    if (now - v < timeUnused || now - lastUsed < timeUnused) { return@forEach }
+                    toRemoveKeys.add(k)
+                    storage.remove(k)
+
                     texture.close()
                 }
-            }
-            temp.clear()
+                toRemoveKeys.forEach { toUnload.remove(it) }
+            }}
         }
     }
 
@@ -101,7 +102,10 @@ object GIFManager {
         return WeakReference(id, item.texture) {
             item.numReferences--
             if (item.numReferences <= 0) {
-                toUnload.add(Pair(id, getNow_ms()))
+                synchronized(toUnload) {
+                    val now = getNow_ms()
+                    toUnload[id] = max(toUnload[id]?:0L, now)
+                }
             }
         }
     }
@@ -112,7 +116,10 @@ object GIFManager {
         return WeakReference(id, item.texture.animated()) {
             item.numReferences--
             if (item.numReferences <= 0) {
-                toUnload.add(Pair(id, getNow_ms()))
+                synchronized(toUnload) {
+                    val now = getNow_ms()
+                    toUnload[id] = max(toUnload[id]?:0L, now)
+                }
             }
         }
     }

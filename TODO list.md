@@ -3,6 +3,8 @@
 * Rework permission level and player roles (not sure what i meant by that)
 * I don't think ventities will work correctly after being teleported to another dimension
 
+* Rename placement assist to "Snap Mode"
+
 # Maybe
 
 * Mode to change COM (set mass of all blocks to 0 and set mass of target block to total mass)

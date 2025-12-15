@@ -1,0 +1,43 @@
+{
+  "id": "toolgun/hitpos_modes",
+  "icon": "minecraft:book",
+  "category": "the_vmod:toolgun",
+  "sortnum": 1,
+  "name": "HitPos Modes",
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "text": "If a toolgun mode uses positions do so something, it will have \"HitPos Modes\". Depending on chosen mode, it will determine how position will be calculated$(li)$(l)Normal$() - No transformation, uses raw position$(li)$(l)Centered On Side$() - Will use center of a block face it hit.$(li)$(l)Centered In Block$() - Will use center of a block it hit. ",
+      "title": "HitPos Modes"
+    },
+    "$(li)$(l)Precise Placement$() - Will create n (uses \"Precise Placement Assist Sides\") squared points on a block face, and use closest to hit point.$(br)",
+    {
+      "type": "the_vmod:gif_page",
+      "text": "Normal HitPos",
+      "images": [
+        "the_vmod:patchouli_assets/en_us/toolgun/gifs/hitpos_normal.gif"
+      ]
+    },
+    {
+      "type": "the_vmod:gif_page",
+      "text": "Centered On Side",
+      "images": [
+        "the_vmod:patchouli_assets/en_us/toolgun/gifs/hitpos_centered_side.gif"
+      ]
+    },
+    {
+      "type": "the_vmod:gif_page",
+      "text": "Centered In Block",
+      "images": [
+        "the_vmod:patchouli_assets/en_us/toolgun/gifs/hitpos_centered_block.gif"
+      ]
+    },
+    {
+      "type": "the_vmod:gif_page",
+      "text": "Precise Placement",
+      "images": [
+        "the_vmod:patchouli_assets/en_us/toolgun/gifs/hitpos_advanced_1.gif"
+      ]
+    }
+  ]
+}

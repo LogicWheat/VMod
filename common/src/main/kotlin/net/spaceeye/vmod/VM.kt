@@ -75,8 +75,13 @@ object VM {
             EnvExecutor.runInEnv(Env.CLIENT) { Runnable {
                 ClientBookRegistry.INSTANCE.pageTypes.put(ResourceLocation(net.spaceeye.vmod.MOD_ID, "gif_page"), PageGIF::class.java)
             } }
-        } else if (!VMConfig.CLIENT.SHUT_UP) {
+        } else {
             PersistentEvents.clientOnTick.on { (minecraft), unsub ->
+                if (VMConfig.CLIENT.SHUT_UP) {
+                    unsub()
+                    return@on
+                }
+
                 val player = minecraft.player ?: return@on
                 unsub()
                 player.sendSystemMessage(makeFake("[Vmod]: Install Patchouli for a guide book! (You can disable this message in client config)"))

@@ -2,7 +2,7 @@
   "id": "toolgun/connection",
   "icon": "minecraft:book",
   "category": "the_vmod:toolgun",
-  "sortnum": 1,
+  "sortnum": 3,
   "name": "Connection Mode",
   "pages": [
     {

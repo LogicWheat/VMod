@@ -1,4 +1,4 @@
-{.e_sortnum 1}
+{.e_sortnum 3}
 # Connection Mode
 This mode creates a connection (fixed/bearing/free) between 2 objects.
 
