@@ -13,7 +13,7 @@ class CenteredAroundRotationAssistTransformProvider(
     val mainShip: ClientShip,
     val ship: ClientShip
 ): ClientShipTransformProvider {
-    constructor(tp: CenteredAroundPlacementAssistTransformProvider):
+    constructor(tp: CenteredAroundSnapModeTransformProvider):
             this(tp.shipPosInMainShipShipyard,
                  tp.mainTransformProvider.ship1,
                  tp.ship)

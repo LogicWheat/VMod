@@ -15,9 +15,8 @@
     {
       "type": "patchouli:text",
       "text": "$(li)$(l)Max Force$() - Determines how much force a constraint can apply before giving up and stopping working. \u003c0 for max$(li)$(l)Stiffness$() - Determines how stiff a constraint is. \u003c0 for max$(li)$(l)Fixed Distance$() - If \u003c0, then calculates distance between points itself, if \u003e\u003d0, then uses given distance instead.$(li)$(l)Hitpos Modes$() - If constraint needs positions, this option will appear$(li2)$(l)Normal$() - Will use hit position as is ",
-      "title": "IDK Parameters"
+      "title": "VEntity Parameters"
     },
-    "$(li2)$(l)Centered On Side$() - Will get the face of a block hit position is on, and use center of that face as position.$(li2)$(l)Centered In Block$() - Will get the block hit position is on, and use center of the block as position$(li2)$(l)Precise Placement$() - Will get the face of a block hit position is on, create n^n points (determined by Precise Placement Assist Sides) uniformly distributed across that face, and use closest point to hit position (will light up green) ",
-    "$(li)$(l)Placement Assist Scroll Step$() - Determines how big scroll step is of rotation in Placement Assist. In degrees$(li)$(l)Distance From Block$() - Determines how far away object will be after finishing Placement Assist "
+    "$(li2)$(l)Centered On Side$() - Will get the face of a block hit position is on, and use center of that face as position.$(li2)$(l)Centered In Block$() - Will get the block hit position is on, and use center of the block as position$(li2)$(l)Precise Placement$() - Will get the face of a block hit position is on, create n^n points (determined by Precise Placement Side Points) uniformly distributed across that face, and use the closest point to hit position (will light up green) "
   ]
 }

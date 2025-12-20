@@ -7,10 +7,9 @@
   "pages": [
     {
       "type": "patchouli:text",
-      "text": "If a toolgun mode uses positions do so something, it will have \"HitPos Modes\". Depending on chosen mode, it will determine how position will be calculated$(li)$(l)Normal$() - No transformation, uses raw position$(li)$(l)Centered On Side$() - Will use center of a block face it hit.$(li)$(l)Centered In Block$() - Will use center of a block it hit. ",
+      "text": "If a toolgun mode uses positions do so something, it will have \"HitPos Modes\". Depending on chosen mode, it will determine how position will be calculated$(li)$(l)Normal$() - No transformation, uses raw position$(li)$(l)Centered On Side$() - Will use center of a block face it hit.$(li)$(l)Centered In Block$() - Will use center of a block it hit.$(li)$(l)Precise Placement$() - Will create n (uses \"Precise Placement Side Points\") squared points on a block face, and use closest to hit point. ",
       "title": "HitPos Modes"
     },
-    "$(li)$(l)Precise Placement$() - Will create n (uses \"Precise Placement Assist Sides\") squared points on a block face, and use closest to hit point.$(br)",
     {
       "type": "the_vmod:gif_page",
       "text": "Normal HitPos",

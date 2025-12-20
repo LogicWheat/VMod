@@ -13,7 +13,7 @@ object ToolgunExtensions: Registry<ToolgunModeExtension>() {
     init {
         register(BasicConnectionExtension::class)
         register(PlacementModesExtension::class)
-        register(PlacementAssistExtension::class)
+        register(SnapModeExtension::class)
         register(BlockMenuOpeningExtension::class)
         register(ConstantClientRaycastingExtension::class)
 

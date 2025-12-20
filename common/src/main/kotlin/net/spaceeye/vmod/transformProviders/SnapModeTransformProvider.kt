@@ -13,7 +13,7 @@ import org.valkyrienskies.core.api.ships.ClientShipTransformProvider
 import org.valkyrienskies.core.api.ships.properties.ShipTransform
 import org.valkyrienskies.core.impl.game.ships.ShipTransformImpl
 
-class PlacementAssistTransformProvider(
+class SnapModeTransformProvider(
     var firstResult: RaycastFunctions.RaycastResult,
     var mode: PositionModes,
     var ship1: ClientShip,

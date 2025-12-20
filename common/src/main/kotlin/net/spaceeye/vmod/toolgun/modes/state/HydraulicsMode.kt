@@ -52,9 +52,9 @@ class HydraulicsMode: ExtendableToolgunMode(), HydraulicsGUI, HydraulicsHUD {
 
     var primaryFirstRaycast: Boolean by get(i++, false)
 
-    val posMode: PositionModes get() = getExtensionOfType<PlacementAssistExtension>().posMode
-    val precisePlacementAssistSideNum: Int get() = getExtensionOfType<PlacementAssistExtension>().precisePlacementAssistSideNum
-    val paMiddleFirstRaycast: Boolean get() = getExtensionOfType<PlacementAssistExtension>().middleFirstRaycast
+    val posMode: PositionModes get() = getExtensionOfType<SnapModeExtension>().posMode
+    val precisePlacementAssistSideNum: Int get() = getExtensionOfType<SnapModeExtension>().precisePlacementAssistSideNum
+    val paMiddleFirstRaycast: Boolean get() = getExtensionOfType<SnapModeExtension>().middleFirstRaycast
 
     var previousResult: RaycastFunctions.RaycastResult? = null
     fun activatePrimaryFunction(level: ServerLevel, player: ServerPlayer, raycastResult: RaycastFunctions.RaycastResult) = serverRaycast2PointsFnActivation(posMode, precisePlacementAssistSideNum, level, raycastResult, { if (previousResult == null || primaryFirstRaycast) { previousResult = it; Pair(false, null) } else { Pair(true, previousResult) } }, ::resetState) {
@@ -92,7 +92,7 @@ class HydraulicsMode: ExtendableToolgunMode(), HydraulicsGUI, HydraulicsHUD {
 
     companion object {
         init {
-            val paNetworking = PlacementAssistNetworking("hydraulics_networking", MOD_ID)
+            val paNetworking = SnapModeNetworking("hydraulics_networking", MOD_ID)
             ToolgunModes.registerWrapper(HydraulicsMode::class) {
                 it.addExtension {
                     BasicConnectionExtension<HydraulicsMode>("hydraulics_mode"
@@ -103,7 +103,7 @@ class HydraulicsMode: ExtendableToolgunMode(), HydraulicsGUI, HydraulicsHUD {
                 }.addExtension{
                     BlockMenuOpeningExtension<HydraulicsMode> { inst -> inst.primaryFirstRaycast || inst.paMiddleFirstRaycast }
                 }.addExtension {
-                    PlacementAssistExtension(true, paNetworking,
+                    SnapModeExtension(true, paNetworking,
                         { (it as HydraulicsMode).primaryFirstRaycast },
                         { (it as HydraulicsMode).connectionMode == HydraulicsConstraint.ConnectionMode.HINGE_ORIENTATION },
                         { spoint1: Vector3d, spoint2: Vector3d, rpoint1: Vector3d, rpoint2: Vector3d, ship1: ServerShip, ship2: ServerShip?, shipId1: ShipId, shipId2: ShipId, rresults: Pair<RaycastFunctions.RaycastResult, RaycastFunctions.RaycastResult>, paDistanceFromBlock: Double ->

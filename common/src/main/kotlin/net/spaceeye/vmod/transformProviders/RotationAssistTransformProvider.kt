@@ -22,7 +22,7 @@ class RotationAssistTransformProvider(
 
     var doWork: () -> Boolean,
 ): ClientShipTransformProvider {
-    constructor(placementTransform: PlacementAssistTransformProvider, angle: Ref<Double>, doWork: () -> Boolean):
+    constructor(placementTransform: SnapModeTransformProvider, angle: Ref<Double>, doWork: () -> Boolean):
             this(
                 placementTransform.ship1,
                 placementTransform.rresult2.ship as? ClientShip,

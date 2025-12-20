@@ -102,14 +102,14 @@ val LENGTH_UV_STEP_MULTIPLIER = s("Length UV Step Multiplier")
 val WIDTH_UV_START = s("Width UV Start")
 val WIDTH_UV_MULTIPLIER = s("Width UV Multiplier")
 
-val PLACEMENT_ASSIST_SCROLL_STEP = s("Placement Assist Scroll Step")
+val SNAP_MODE_SCROLL_STEP = s("Snap Mode Scroll Step")
 
 val HITPOS_MODES = s("Hitpos Modes")
 val NORMAL = s("Normal")
 val CENTERED_ON_SIDE = s("Centered On Side")
 val CENTERED_IN_BLOCK = s("Centered In Block")
 
-val PRECISE_PLACEMENT_ASSIST_SIDES = s("Precise Placement Assist Sides")
+val PRECISE_PLACEMENT_SIDE_POINTS = s("Precise Placement Side Points")
 val PRECISE_PLACEMENT = s("Precise Placement")
 
 val STRIP_MODES = s("Strip Modes")

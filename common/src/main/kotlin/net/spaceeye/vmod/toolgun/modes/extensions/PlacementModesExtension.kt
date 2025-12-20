@@ -70,7 +70,7 @@ open class PlacementModesExtension(
 
     override fun eMakeGUISettings(parentWindow: UIContainer) {
         val offset = 2f
-        makeTextEntry(PRECISE_PLACEMENT_ASSIST_SIDES.get(), ::precisePlacementAssistSideNum, offset, offset, parentWindow, ServerLimits.instance.precisePlacementAssistSides)
+        makeTextEntry(PRECISE_PLACEMENT_SIDE_POINTS.get(), ::precisePlacementAssistSideNum, offset, offset, parentWindow, ServerLimits.instance.precisePlacementAssistSides)
         if (showCenteredInBlock) {
             makeDropDown(
                 HITPOS_MODES.get(), parentWindow, offset, offset, listOf(

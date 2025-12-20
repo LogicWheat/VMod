@@ -16,7 +16,7 @@ Player can change visual parameters per VEntity, however each player can set an 
 * * **Width UV Multiplier** - Amount of texture lengths renderer will loop per unit width
 * **RGBA** - Controls color
 
-# IDK Parameters
+# VEntity Parameters
 
 * **Max Force** - Determines how much force a constraint can apply before giving up and stopping working. <0 for max
 * **Stiffness** - Determines how stiff a constraint is. <0 for max
@@ -25,6 +25,4 @@ Player can change visual parameters per VEntity, however each player can set an 
 * * **Normal** - Will use hit position as is
 * * **Centered On Side** - Will get the face of a block hit position is on, and use center of that face as position.
 * * **Centered In Block** - Will get the block hit position is on, and use center of the block as position
-* * **Precise Placement** - Will get the face of a block hit position is on, create n^n points (determined by Precise Placement Assist Sides) uniformly distributed across that face, and use closest point to hit position (will light up green)
-* **Placement Assist Scroll Step** - Determines how big scroll step is of rotation in Placement Assist. In degrees
-* **Distance From Block** - Determines how far away object will be after finishing Placement Assist
+* * **Precise Placement** - Will get the face of a block hit position is on, create n^n points (determined by Precise Placement Side Points) uniformly distributed across that face, and use the closest point to hit position (will light up green)

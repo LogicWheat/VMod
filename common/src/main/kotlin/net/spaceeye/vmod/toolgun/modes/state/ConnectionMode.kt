@@ -1,7 +1,6 @@
 package net.spaceeye.vmod.toolgun.modes.state
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
 import net.spaceeye.vmod.MOD_ID
@@ -17,7 +16,6 @@ import net.spaceeye.vmod.toolgun.modes.gui.ConnectionGUI
 import net.spaceeye.vmod.toolgun.modes.hud.ConnectionHUD
 import net.spaceeye.vmod.reflectable.ByteSerializableItem.get
 import net.spaceeye.vmod.rendering.RenderingUtils
-import net.spaceeye.vmod.rendering.types.A2BRendererAnimated
 import net.spaceeye.vmod.toolgun.gui.Presettable
 import net.spaceeye.vmod.toolgun.gui.Presettable.Companion.presettable
 import net.spaceeye.vmod.toolgun.modes.*
@@ -47,9 +45,9 @@ class ConnectionMode: ExtendableToolgunMode(), ConnectionGUI, ConnectionHUD {
     var primaryFirstRaycast: Boolean by get(i++, false)
 
 
-    val posMode: PositionModes get() = getExtensionOfType<PlacementAssistExtension>().posMode
-    val precisePlacementAssistSideNum: Int get() = getExtensionOfType<PlacementAssistExtension>().precisePlacementAssistSideNum
-    val paMiddleFirstRaycast: Boolean get() = getExtensionOfType<PlacementAssistExtension>().middleFirstRaycast
+    val posMode: PositionModes get() = getExtensionOfType<SnapModeExtension>().posMode
+    val precisePlacementAssistSideNum: Int get() = getExtensionOfType<SnapModeExtension>().precisePlacementAssistSideNum
+    val paMiddleFirstRaycast: Boolean get() = getExtensionOfType<SnapModeExtension>().middleFirstRaycast
 
     var previousResult: RaycastFunctions.RaycastResult? = null
 
@@ -81,7 +79,7 @@ class ConnectionMode: ExtendableToolgunMode(), ConnectionGUI, ConnectionHUD {
     }
 
     companion object {
-        val paNetworkingObj = PlacementAssistNetworking("connection_networking", MOD_ID)
+        val paNetworkingObj = SnapModeNetworking("connection_networking", MOD_ID)
         init {
             //"it" IS THE SAME ON CLIENT BUT ON SERVER IT CREATES NEW INSTANCE OF THE MODE
             ToolgunModes.registerWrapper(ConnectionMode::class) {
@@ -94,7 +92,7 @@ class ConnectionMode: ExtendableToolgunMode(), ConnectionGUI, ConnectionHUD {
                 }.addExtension {
                     BlockMenuOpeningExtension<ConnectionMode> { inst -> inst.primaryFirstRaycast || inst.paMiddleFirstRaycast }
                 }.addExtension {
-                    PlacementAssistExtension(true, paNetworkingObj,
+                    SnapModeExtension(true, paNetworkingObj,
                         { (it as ConnectionMode).primaryFirstRaycast },
                         { (it as ConnectionMode).connectionMode == ConnectionConstraint.ConnectionModes.HINGE_ORIENTATION },
                         { spoint1: Vector3d, spoint2: Vector3d, rpoint1: Vector3d, rpoint2: Vector3d, ship1: ServerShip, ship2: ServerShip?, shipId1: ShipId, shipId2: ShipId, rresults: Pair<RaycastFunctions.RaycastResult, RaycastFunctions.RaycastResult>, paDistanceFromBlock: Double ->

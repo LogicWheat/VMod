@@ -9,8 +9,8 @@ import org.valkyrienskies.core.api.ships.ClientShip
 import org.valkyrienskies.core.api.ships.ClientShipTransformProvider
 import org.valkyrienskies.core.api.ships.properties.ShipTransform
 
-class CenteredAroundPlacementAssistTransformProvider(
-    var mainTransformProvider: PlacementAssistTransformProvider,
+class CenteredAroundSnapModeTransformProvider(
+    var mainTransformProvider: SnapModeTransformProvider,
     var ship: ClientShip
 ): ClientShipTransformProvider {
     val shipPosInMainShipShipyard: Vector3d
