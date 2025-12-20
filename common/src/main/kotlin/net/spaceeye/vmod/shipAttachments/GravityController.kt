@@ -6,12 +6,14 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.annotation.JsonSerialize
-import net.spaceeye.vmod.utils.Vector3d
+import net.minecraft.server.level.ServerLevel
+import net.spaceeye.valkyrien_ship_schematics.interfaces.ICopyableForcesInducer
+import net.spaceeye.vmod.utils.JVector3d
 import net.spaceeye.vmod.vsStuff.VSGravityManager
-import net.spaceeye.vmod.utils.MyVectorDeserializer
-import net.spaceeye.vmod.utils.MyVectorSerializer
 import org.valkyrienskies.core.api.ships.*
+import org.valkyrienskies.core.api.ships.properties.ShipId
 import org.valkyrienskies.core.api.world.PhysLevel
+import java.util.function.Supplier
 
 @JsonAutoDetect(
     fieldVisibility = JsonAutoDetect.Visibility.ANY,
@@ -22,36 +24,36 @@ import org.valkyrienskies.core.api.world.PhysLevel
 @JsonIgnoreProperties(ignoreUnknown = true)
 class GravityController(
     var dimensionId: String,
-): ShipPhysicsListener {
+): ShipPhysicsListener, ICopyableForcesInducer {
     var useDimensionGravity = true
 
     @JsonIgnore
-    var dimensionGravity = VSGravityManager.getDimensionGravityMutableReference(dimensionId)
-    @JsonSerialize(using = MyVectorSerializer::class)
-    @JsonDeserialize(using = MyVectorDeserializer::class)
+    var dimensionGravity = VSGravityManager.getDimensionGravityMutableReference(dimensionId) ?: JVector3d(0.0, -10.0, 0.0)
+//    @JsonSerialize(using = MyVectorSerializer::class)
+//    @JsonDeserialize(using = MyVectorDeserializer::class)
     @JsonProperty(required = false)
     var gravityVector = dimensionGravity
 
     override fun physTick(physShip: PhysShip, physLevel: PhysLevel) {
         val gravityVector = if (useDimensionGravity) dimensionGravity else gravityVector
-        val forceDiff = (gravityVector - VS_DEFAULT_GRAVITY) * physShip.mass
-        if (forceDiff.sqrDist() < Float.MIN_VALUE) return
+        val forceDiff = gravityVector.sub(dimensionGravity, JVector3d()).mul(physShip.mass)
+        if (forceDiff.lengthSquared() < Float.MIN_VALUE) return
 
         //TODO
-        physShip.applyInvariantForce(forceDiff.toJomlVector3d())
+        physShip.applyInvariantForce(forceDiff)
     }
 
     fun reset() {
-        gravityVector = VSGravityManager.getDimensionGravityMutableReference(dimensionId)
+        gravityVector = VSGravityManager.getDimensionGravityMutableReference(dimensionId) ?: JVector3d(0.0, -10.0, 0.0)
         useDimensionGravity = true
     }
 
     @JsonIgnore
     fun effectiveGravity() = if (useDimensionGravity) dimensionGravity else gravityVector
+    override fun onCopy(level: Supplier<ServerLevel>, shipOn: LoadedServerShip, shipsToBeSaved: List<ServerShip>, centerPositions: Map<ShipId, org.joml.Vector3d>) {}
+    override fun onPaste(level: Supplier<ServerLevel>, shipOn: LoadedServerShip, loadedShips: Map<Long, ServerShip>, centerPositions: Map<ShipId, Pair<org.joml.Vector3d, org.joml.Vector3d>>) {}
 
     companion object {
-        val VS_DEFAULT_GRAVITY = Vector3d(0, -10, 0)
-
         fun getOrCreate(ship: LoadedServerShip) =
             ship.getAttachment(GravityController::class.java)
                 ?: GravityController(ship.chunkClaimDimension).also {

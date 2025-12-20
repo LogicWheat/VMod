@@ -44,7 +44,7 @@ class GravChangerMode: ExtendableToolgunMode(), GravChangerHUD, GravChangerGUI {
         val traversed = when (mode) {
             Mode.Individual -> {
                 GravityController.getOrCreate(origin).also {
-                    it.gravityVector = Vector3d(gravityVector)
+                    it.gravityVector = gravityVector.toJomlVector3d()
                     it.useDimensionGravity = false
                 }
                 return
@@ -60,7 +60,7 @@ class GravChangerMode: ExtendableToolgunMode(), GravChangerHUD, GravChangerGUI {
         traversed.forEach { id ->
             GravityController
                 .getOrCreate(level.shipObjectWorld.loadedShips.getById(id) ?: return@forEach).also {
-                    it.gravityVector = Vector3d(gravityVector)
+                    it.gravityVector = gravityVector.toJomlVector3d()
                     it.useDimensionGravity = false
                 }
         }

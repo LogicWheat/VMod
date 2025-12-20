@@ -23,8 +23,9 @@ class RopeConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
     var stiffness: Float by get(i++, 0f)
     var damping: Float by get(i++, 0f)
     var ropeLength: Float by get(i++, 0f)
+    val compliance: Double by get(i++, 1e-100)
 
-     constructor(
+    constructor(
         sPos1: Vector3d,
         sPos2: Vector3d,
 
@@ -81,7 +82,7 @@ class RopeConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
         val mainConstraint = VSDistanceJoint(
             shipId1, VSJointPose(sPos1.toJomlVector3d(), Quaterniond()),
             shipId2, VSJointPose(sPos2.toJomlVector3d(), Quaterniond()),
-            maxForceTorque,
+            maxForceTorque, compliance,
             0f, ropeLength,
             stiffness = stiffness,
             damping = damping

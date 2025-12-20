@@ -54,6 +54,7 @@ class HydraulicsConstraint(): TwoShipsMConstraint(), VEAutoSerializable, Tickabl
     var maxForce: Float by get(i++, -1f)
     var stiffness: Float by get(i++, 0f)
     var damping: Float by get(i++, 0f)
+    val compliance: Double by get(i++, 1e-100)
 
     var d1: VSJoint? = null
     var d2: VSJoint? = null
@@ -175,7 +176,7 @@ class HydraulicsConstraint(): TwoShipsMConstraint(), VEAutoSerializable, Tickabl
         val p22 = sPos2.toJomlVector3d()
 
         if (connectionMode == ConnectionMode.FREE_ORIENTATION) {
-            d1 = (d1 as VSDistanceJoint).copy(minDistance = distance, maxDistance = distance)
+            d1 = (d1 as VSDistanceJoint).copy(minDistance = 0f, maxDistance = distance)
             level.updateJoint(cIDs[0], d1!!)
         } else {
             d1 = d1!!.copy(null, p11, null, null, p21, null)
@@ -202,7 +203,7 @@ class HydraulicsConstraint(): TwoShipsMConstraint(), VEAutoSerializable, Tickabl
             d1 = VSDistanceJoint(
                 shipId1, VSJointPose(sPos1.toJomlVector3d(), Quaterniond()),
                 shipId2, VSJointPose(sPos2.toJomlVector3d(), Quaterniond()),
-                maxForceTorque, distance, distance, stiffness = stiffness, damping = damping
+                maxForceTorque, compliance, distance, distance, stiffness = stiffness, damping = damping
             )
             mc(d1!!, level)
             return@withFutures
@@ -218,12 +219,12 @@ class HydraulicsConstraint(): TwoShipsMConstraint(), VEAutoSerializable, Tickabl
                 d1 = VSFixedJoint(
                     shipId1, VSJointPose(p11, sRot1.invert(Quaterniond())),
                     shipId2, VSJointPose(p21, sRot2.invert(Quaterniond())),
-                    maxForceTorque,
+                    maxForceTorque, compliance
                 )
                 d2 = VSFixedJoint(
                     shipId1, VSJointPose(p12, sRot1.invert(Quaterniond())),
                     shipId2, VSJointPose(p22, sRot2.invert(Quaterniond())),
-                    maxForceTorque,
+                    maxForceTorque, compliance
                 )
 
                 mc(d1!!, level)
@@ -233,23 +234,23 @@ class HydraulicsConstraint(): TwoShipsMConstraint(), VEAutoSerializable, Tickabl
                 d1 = VSDistanceJoint(
                     shipId1, VSJointPose(p11, Quaterniond()),
                     shipId2, VSJointPose(p21, Quaterniond()),
-                    maxForceTorque, 0f, 0f, stiffness = stiffness, damping = damping
+                    maxForceTorque, compliance, 0f, 0f, stiffness = stiffness, damping = damping
                 )
                 d2 = VSDistanceJoint(
                     shipId1, VSJointPose(p12, Quaterniond()),
                     shipId2, VSJointPose(p22, Quaterniond()),
-                    maxForceTorque, 0f, 0f, stiffness = stiffness, damping = damping
+                    maxForceTorque, compliance, 0f, 0f, stiffness = stiffness, damping = damping
                 )
 
                 val r1 = VSRevoluteJoint(
                     shipId1, VSJointPose(p11, getHingeRotation(sDir1)),
                     shipId2, VSJointPose(p21, getHingeRotation(sDir2)),
-                    maxForceTorque, driveFreeSpin = true
+                    maxForceTorque, compliance, driveFreeSpin = true
                 )
                 val r2 = VSRevoluteJoint(
                     shipId1, VSJointPose(p12, getHingeRotation(sDir1)),
                     shipId2, VSJointPose(p22, getHingeRotation(sDir2)),
-                    maxForceTorque, driveFreeSpin = true
+                    maxForceTorque, compliance, driveFreeSpin = true
                 )
 
                 mc(d1!!, level)

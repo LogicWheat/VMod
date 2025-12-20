@@ -222,7 +222,7 @@ object VMCommands {
 
         ships
             .mapNotNull { loaded.getById(it.id) }
-            .forEach { GravityController.getOrCreate(it as LoadedServerShip).gravityVector = Vector3d(x, y, z) }
+//            .forEach { GravityController.getOrCreate(it as LoadedServerShip).gravityVector = Vector3d(x, y, z) }
 
         return 0
     }
@@ -244,7 +244,7 @@ object VMCommands {
 
         traversed
             .mapNotNull { loaded.getById(it) }
-            .forEach { GravityController.getOrCreate(it as LoadedServerShip).gravityVector = Vector3d(x, y, z) }
+//            .forEach { GravityController.getOrCreate(it as LoadedServerShip).gravityVector = Vector3d(x, y, z) }
 
         return 0
     }
@@ -266,7 +266,7 @@ object VMCommands {
 
         traversed
             .mapNotNull { loaded.getById(it) }
-            .forEach { GravityController.getOrCreate(it as LoadedServerShip).gravityVector = Vector3d(x, y, z) }
+//            .forEach { GravityController.getOrCreate(it as LoadedServerShip).gravityVector = Vector3d(x, y, z) }
 
         return 0
     }
@@ -317,17 +317,17 @@ object VMCommands {
     }
 
     private object OP {
-        fun changeDimensionGravity(cc: CommandContext<CommandSourceStack>): Int {
-            val dimension = DimensionArgument.getDimension(cc, "dimension")
-
-            val x = DoubleArgumentType.getDouble(cc, "x")
-            val y = DoubleArgumentType.getDouble(cc, "y")
-            val z = DoubleArgumentType.getDouble(cc, "z")
-
-            VSGravityManager.setGravity(dimension, Vector3d(x, y, z))
-
-            return 0
-        }
+//        fun changeDimensionGravity(cc: CommandContext<CommandSourceStack>): Int {
+//            val dimension = DimensionArgument.getDimension(cc, "dimension")
+//
+//            val x = DoubleArgumentType.getDouble(cc, "x")
+//            val y = DoubleArgumentType.getDouble(cc, "y")
+//            val z = DoubleArgumentType.getDouble(cc, "z")
+//
+//            VSGravityManager.setGravity(dimension, Vector3d(x, y, z))
+//
+//            return 0
+//        }
 
         fun clearVmodAttachments(cc: CommandContext<CommandSourceStack>): Int {
             val level = cc.source.level
@@ -570,7 +570,8 @@ object VMCommands {
                             arg("x", DoubleArgumentType.doubleArg()).then(
                                 arg("y", DoubleArgumentType.doubleArg()).then(
                                     arg("z", DoubleArgumentType.doubleArg()).executes {
-                                        OP.changeDimensionGravity(it)
+                                        0
+//                                        OP.changeDimensionGravity(it)
                                     }
                                 )
                             )

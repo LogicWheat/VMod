@@ -24,6 +24,7 @@ class SyncRotationConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
     var sRot2: Quaterniond by get(i++, Quaterniond())
 
     var maxForce: Float by get(i++, -1f)
+    val compliance: Double by get(i++, 1e-100)
 
     constructor(
         sRot1: Quaterniondc,
@@ -64,7 +65,7 @@ class SyncRotationConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
         val mainConstraint = VSD6Joint(
             shipId1, VSJointPose(org.joml.Vector3d(), sRot1),
             shipId2, VSJointPose(org.joml.Vector3d(), sRot2),
-            maxForceTorque,
+            maxForceTorque, compliance,
             EnumMap(mapOf(
                 Pair(VSD6Joint.D6Axis.X, VSD6Joint.D6Motion.FREE),
                 Pair(VSD6Joint.D6Axis.Y, VSD6Joint.D6Motion.FREE),

@@ -31,6 +31,7 @@ class ConnectionConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
     var maxForce: Float by get(i++, -1f)
     var stiffness: Float by get(i++, -1f)
     var damping: Float by get(i++, -1f)
+    val compliance: Double by get(i++, 1e-100)
 
     var sRot1: Quaterniond by get(i++, Quaterniond())
     var sRot2: Quaterniond by get(i++, Quaterniond())
@@ -110,7 +111,7 @@ class ConnectionConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
             val c = VSDistanceJoint(
                 shipId1, VSJointPose(sPos1.toJomlVector3d(), Quaterniond()),
                 shipId2, VSJointPose(sPos2.toJomlVector3d(), Quaterniond()),
-                maxForceTorque, distance, distance, stiffness = stiffness, damping = damping
+                maxForceTorque, compliance, distance, distance, stiffness = stiffness, damping = damping
             )
             mc(c, level)
             return@withFutures
@@ -126,12 +127,12 @@ class ConnectionConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
                 val d1 = VSFixedJoint(
                     shipId1, VSJointPose(p11, sRot1.invert(Quaterniond())),
                     shipId2, VSJointPose(p21, sRot2.invert(Quaterniond())),
-                    maxForceTorque,
+                    maxForceTorque, compliance
                 )
                 val d2 = VSFixedJoint(
                     shipId1, VSJointPose(p12, sRot1.invert(Quaterniond())),
                     shipId2, VSJointPose(p22, sRot2.invert(Quaterniond())),
-                    maxForceTorque,
+                    maxForceTorque, compliance
                 )
 
                 mc(d1, level)
@@ -141,23 +142,23 @@ class ConnectionConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
                 val d1 = VSDistanceJoint(
                     shipId1, VSJointPose(p11, Quaterniond()),
                     shipId2, VSJointPose(p21, Quaterniond()),
-                    maxForceTorque, 0f, 0f, stiffness = stiffness, damping = damping
+                    maxForceTorque, compliance, 0f, 0f, stiffness = stiffness, damping = damping
                 )
                 val d2 = VSDistanceJoint(
                     shipId1, VSJointPose(p12, Quaterniond()),
                     shipId2, VSJointPose(p22, Quaterniond()),
-                    maxForceTorque, 0f, 0f, stiffness = stiffness, damping = damping
+                    maxForceTorque, compliance, 0f, 0f, stiffness = stiffness, damping = damping
                 )
 
                 val r1 = VSRevoluteJoint(
                     shipId1, VSJointPose(p11, getHingeRotation(sDir1)),
                     shipId2, VSJointPose(p21, getHingeRotation(sDir2)),
-                    maxForceTorque, driveFreeSpin = true
+                    maxForceTorque, compliance, driveFreeSpin = true
                 )
                 val r2 = VSRevoluteJoint(
                     shipId1, VSJointPose(p12, getHingeRotation(sDir1)),
                     shipId2, VSJointPose(p22, getHingeRotation(sDir2)),
-                    maxForceTorque, driveFreeSpin = true
+                    maxForceTorque, compliance, driveFreeSpin = true
                 )
 
                 mc(d1, level)

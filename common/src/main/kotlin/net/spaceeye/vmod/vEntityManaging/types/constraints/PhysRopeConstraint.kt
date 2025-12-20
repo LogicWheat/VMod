@@ -47,6 +47,7 @@ class PhysRopeConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
     var radius: Double by get(i++, 0.0)
     var maxForce: Float by get(i++, -1f)
     var stiffness: Float by get(i++, -1f)
+    val compliance: Double by get(i++, 1e-100)
     var ropeLength: Float by get(i++, 0f)
     var angleLimit: Double by get(i++, 0.0)
     var massPerSegment: Double by get(i++, 0.0)
@@ -250,7 +251,7 @@ class PhysRopeConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
             mc(VSDistanceJoint(
                 prevId,    VSJointPose(prevPos.toJomlVector3d(),                   getHingeRotation(prevDir)),
                 entity.id, VSJointPose((dir * (length + radius)).toJomlVector3d(), getHingeRotation(dir)),
-                maxForceTorque,
+                maxForceTorque, compliance,
                 0f, 0f//limit
             ), level)
             futures.add(level.gtpa.disableCollisionBetweenBodies(prevId, entity.id))
@@ -263,7 +264,7 @@ class PhysRopeConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
         mc(VSDistanceJoint(
             prevId,  VSJointPose(prevPos.toJomlVector3d(), getHingeRotation(prevDir)),
             shipId2, VSJointPose(sPos2  .toJomlVector3d(), getHingeRotation(sDir2)),
-            maxForceTorque,
+            maxForceTorque, compliance,
             0f, 0f//limit
         ), level)
         futures.add(level.gtpa.disableCollisionBetweenBodies(prevId, shipId2))

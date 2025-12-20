@@ -17,6 +17,7 @@ import net.spaceeye.vmod.vsStuff.PhysRaycastingScheduler
 import org.valkyrienskies.core.api.ships.ServerShip
 import org.valkyrienskies.mod.api.dimensionId
 import org.valkyrienskies.mod.common.BlockStateInfo
+import org.valkyrienskies.mod.common.config.DimensionParametersResolver
 import org.valkyrienskies.mod.common.shipObjectWorld
 import java.awt.Color
 
@@ -33,20 +34,20 @@ class TestMode: ExtendableToolgunMode() {
 //        RenderingData.server.addRenderer(listOf(), ConeBlockRenderer(
 //            raycastResult.worldHitPos!! + raycastResult.globalNormalDirection!! * 0.5, getQuatFromDir(raycastResult.worldNormalDirection!!), 1f, -1, Color(255, 255, 255, 255), true
 //        ), level.dimensionId)
-
+//        DimensionParametersResolver.dimensionMap
         val ship = raycastResult.ship as? ServerShip ?: return
         val lship = level.shipObjectWorld.loadedShips.getById(ship.id)
 
         //RenderingData.server.addRenderer(listOf(ship.id), RainbowRenderer(ship.id))
 
-        val aabb = ship.shipAABB ?: return
-
-        val (airMass, airType) = BlockStateInfo.get(Blocks.AIR.defaultBlockState()) ?: return
-
-        val bpos = raycastResult.blockPosition
-        val state = level.getBlockState(bpos)
-        val (mass, type) = BlockStateInfo.get(state) ?: return
-        level.shipObjectWorld.onSetBlock(bpos.x, bpos.y, bpos.z, level.dimensionId, type, airType, mass, mass)
+//        val aabb = ship.shipAABB ?: return
+//
+//        val (airMass, airType) = BlockStateInfo.get(Blocks.AIR.defaultBlockState()) ?: return
+//
+//        val bpos = raycastResult.blockPosition
+//        val state = level.getBlockState(bpos)
+//        val (mass, type) = BlockStateInfo.get(state) ?: return
+//        level.shipObjectWorld.onSetBlock(bpos.x, bpos.y, bpos.z, level.dimensionId, type, airType, mass, mass)
 
 //        for (x in aabb.minX()-1..aabb.maxX()+1) {
 //        for (z in aabb.minZ()-1..aabb.maxZ()+1) {
