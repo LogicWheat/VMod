@@ -1,8 +1,8 @@
 # 1.9.0
-* works on 2.4 VS
+* Works on 2.4 VS
 * Phys Rope, Slider, Sync Rotation are disabled
 * Dimensional Gravity is removed, use VS datapacks
-* 
+* Progress on patchouli guide book
 
 # 1.8.0
 * Added function "/vmod op prune-shipyard-chunks" to delete chunks of deleted ships
