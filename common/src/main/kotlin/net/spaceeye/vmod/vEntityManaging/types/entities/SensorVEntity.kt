@@ -17,6 +17,11 @@ import org.valkyrienskies.mod.common.shipObjectWorld
 import net.spaceeye.vmod.utils.RaycastFunctions
 import net.spaceeye.vmod.utils.vs.posShipToWorld
 import net.spaceeye.vmod.utils.vs.transformDirectionShipToWorld
+import net.spaceeye.vmod.vEntityManaging.makeVEntityWithId
+import net.spaceeye.vmod.vEntityManaging.removeVEntity
+import org.valkyrienskies.core.internal.world.VsiPhysLevel
+import org.valkyrienskies.mod.common.dimensionId
+import java.util.concurrent.CompletableFuture
 import org.valkyrienskies.mod.common.getLevelFromDimensionId
 import kotlin.math.min
 
@@ -48,10 +53,15 @@ class SensorVEntity(): ExtendableVEntity(), Tickable, VEAutoSerializable {
         this.scale = scale
     }
 
-    override fun iStillExists(allShips: QueryableShipData<Ship>, dimensionIds: Collection<ShipId>) = shipId == -1L || allShips.contains(shipId)
-    override fun iAttachedToShips(dimensionIds: Collection<ShipId>) = mutableListOf(shipId)
+    override fun iStillExists(allShips: QueryableShipData<Ship>): Boolean = shipId == -1L || allShips.contains(shipId)
+    override fun iAttachedToShips(): List<ShipId> = mutableListOf(shipId)
     override fun iGetAttachmentPoints(qshipId: ShipId): List<Vector3d> = if (shipId == qshipId || qshipId == -1L) listOf(Vector3d(pos)) else emptyList()
-
+    override fun iMoveAttachmentPoints(level: ServerLevel, pointsToMove: List<Vector3d>, oldShipId: ShipId, newShipId: ShipId, oldCenter: Vector3d, newCenter: Vector3d): Boolean {
+        val copy = copyVEntity(level, mapOf(oldShipId to newShipId), mapOf(oldShipId to (oldCenter to newCenter)))!!
+        level.removeVEntity(this)
+        level.makeVEntityWithId(copy, mID) {}
+        return false
+    }
 
     override fun iOnScaleBy(level: ServerLevel, scaleBy: Double, scalingCenter: Vector3d) {
         maxDistance *= scaleBy
@@ -67,15 +77,18 @@ class SensorVEntity(): ExtendableVEntity(), Tickable, VEAutoSerializable {
         return SensorVEntity(nShip.id, nPos, lookDir, maxDistance, ignoreSelf, scale, channel)
     }
 
-    override fun iOnMakeVEntity(level: ServerLevel): Boolean {
-        if (shipId == -1L) return true
-        level.shipObjectWorld.loadedShips.getById(shipId) ?: return false
-        return true
-    }
+    override fun iOnMakeVEntity(level: ServerLevel): List<CompletableFuture<Boolean>> =
+        listOf(CompletableFuture<Boolean>().also {
+            if (shipId == -1L) {
+                it.complete(true)
+            } else {
+                it.complete(level.shipObjectWorld.loadedShips.getById(shipId) != null)
+            }
+        })
 
     override fun iOnDeleteVEntity(level: ServerLevel) {}
 
-    override fun tick(server: MinecraftServer, unregister: () -> Unit) {
+    override fun serverTick(server: MinecraftServer, unregister: () -> Unit) {
         val ship = server.shipObjectWorld.allShips.getById(shipId)
 
         //TODO
@@ -95,4 +108,6 @@ class SensorVEntity(): ExtendableVEntity(), Tickable, VEAutoSerializable {
 
         MessagingNetwork.notify(channel, Signal(min(distance / maxDistance, 1.0)))
     }
+
+    override fun physTick(level: VsiPhysLevel, delta: Double) {}
 }

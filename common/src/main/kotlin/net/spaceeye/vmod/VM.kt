@@ -30,6 +30,7 @@ import net.spaceeye.vmod.physgun.ServerPhysgunState
 import net.spaceeye.vmod.rendering.RenderingTypes
 import net.spaceeye.vmod.rendering.initRenderingData
 import net.spaceeye.vmod.schematic.SchematicActionsQueue
+import net.spaceeye.vmod.shipAttachments.GravityController
 import net.spaceeye.vmod.shipAttachments.VMAttachments
 import net.spaceeye.vmod.toolgun.*
 import net.spaceeye.vmod.toolgun.clientSettings.ClientSettingsTypes
@@ -39,12 +40,16 @@ import net.spaceeye.vmod.translate.makeFake
 import net.spaceeye.vmod.utils.ServerObjectsHolder
 import net.spaceeye.vmod.utils.closeClientObjects
 import net.spaceeye.vmod.utils.closeServerObjects
+import net.spaceeye.vmod.utils.vs.MyGameToPhysicsAdapter
+import net.spaceeye.vmod.vsStuff.PhysRaycastingScheduler
 import net.spaceeye.vmod.vsStuff.VSGravityManager
-import net.spaceeye.vmod.vsStuff.VSMasslessShipProcessor
 import net.spaceeye.vmod.vsStuff.VSShipyardPruner
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.lwjgl.opengl.GL46
+import org.lwjgl.opengl.GL33
+import org.valkyrienskies.core.api.VsBeta
+import org.valkyrienskies.core.internal.world.VsiPhysLevel
+import org.valkyrienskies.mod.api.vsApi
 import org.valkyrienskies.mod.common.shipObjectWorld
 import vazkii.patchouli.client.book.ClientBookRegistry
 
@@ -60,7 +65,7 @@ var GLMaxArrayTextureLayers: Int = -1
     get() {
         if (field != -1) return field
         val arr = IntArray(1)
-        GL46.glGetIntegerv(GL46.GL_MAX_ARRAY_TEXTURE_LAYERS, arr)
+        GL33.glGetIntegerv(GL33.GL_MAX_ARRAY_TEXTURE_LAYERS, arr)
         field = arr[0]
         return field
     }
@@ -68,6 +73,7 @@ var GLMaxArrayTextureLayers: Int = -1
 object VM {
     const val MOD_ID = "the_vmod"
     val logger: Logger = LogManager.getLogger(MOD_ID)!!
+    val dimToGTPA = mutableMapOf<String, MyGameToPhysicsAdapter>()
 
     @JvmStatic
     fun init() {
@@ -103,9 +109,9 @@ object VM {
         ServerLimits
         ServerPhysgunState
         SchemCompatObj
-        VSMasslessShipProcessor
         VSShipyardPruner
         VMToolgun
+//        PhysRaycastingScheduler //TODO
         EnvExecutor.runInEnv(Env.CLIENT) { Runnable {
             ScreenWindow
             ClientPhysgunState
@@ -136,6 +142,7 @@ object VM {
         TagSerializableItem
     }
 
+    @OptIn(VsBeta::class)
     @JvmStatic
     fun makeEvents() {
         PersistentEvents
@@ -175,5 +182,9 @@ object VM {
         }}
 
         PhysgunItem.makeEvents()
+
+        vsApi.physTickEvent.on { event -> val level = event.world; val delta = event.delta
+            dimToGTPA[level.dimension]?.also { it.physTick(level as VsiPhysLevel, delta) }
+        }
     }
 }

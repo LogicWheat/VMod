@@ -29,11 +29,8 @@ object VMConfig {
     }
     class Common: ConfigSubDirectory()
     class Server: ConfigSubDirectory() {
-        val AUTOREMOVE_MASSLESS_SHIPS: Boolean by CBool(true, "MAY BREAK SOMETHING. if true, will automatically remove massless ships if they appear.")
 
         val SCALE_THRUSTERS_THRUST: Boolean by CBool(true)
-
-        var DIMENSION_GRAVITY_VALUES: String by CString("", "DO NOT CHANGE")
 
         var CONSTRAINT_CREATION_ATTEMPTS: Int by CInt(12000, "The amount of ticks VMod will try to create constraint if it failed to create one. Why is it needed? VS lags sometimes and fails to create constraints, idk why.", 20 to Int.MAX_VALUE)
 

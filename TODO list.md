@@ -21,6 +21,7 @@
 * Clean up physgun code
 * Add snapping to physgun rotation
 
+* Make vmod stuff work with phys entities (making constraints, grabbing them, etc)
 * Add a way for addons to add their own client/server settings
 * Finish Patchouli guide book
 

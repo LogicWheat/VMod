@@ -14,27 +14,24 @@ import org.valkyrienskies.core.api.ships.QueryableShipData
 import org.valkyrienskies.core.api.ships.Ship
 import org.valkyrienskies.core.api.ships.properties.ShipId
 import org.valkyrienskies.mod.common.dimensionId
+import java.util.concurrent.CompletableFuture
 
 interface ExtendableVEntityIMethods {
-    fun iStillExists(allShips: QueryableShipData<Ship>, dimensionIds: Collection<ShipId>): Boolean
-    // SHOULDN'T RETURN GROUND SHIPID
-    fun iAttachedToShips(dimensionIds: Collection<ShipId>): List<ShipId>
+    fun iStillExists(allShips: QueryableShipData<Ship>): Boolean
+    fun iAttachedToShips(): List<ShipId>
 
-    // positions to which VEntity is "attached" to the ship/world
-    // is needed for strip tool, moving VEntities on ship splitting
     fun iGetAttachmentPoints(shipId: Long): List<Vector3d>
 
-    // is called on ship splitting
-    fun iMoveShipyardPosition(level: ServerLevel, previous: BlockPos, new: BlockPos, newShipId: ShipId) {TODO()}
+    fun iMoveAttachmentPoints(level: ServerLevel, pointsToMove: List<Vector3d>, oldShipId: ShipId, newShipId: ShipId, oldCenter: Vector3d, newCenter: Vector3d): Boolean
 
     fun iCopyVEntity(level: ServerLevel, mapped: Map<ShipId, ShipId>, centerPositions: Map<ShipId, Pair<Vector3d, Vector3d>>): VEntity?
 
     fun iOnScaleBy(level: ServerLevel, scaleBy: Double, scalingCenter: Vector3d)
 
     fun iNbtSerialize(): CompoundTag?
-    fun iNbtDeserialize(tag: CompoundTag, lastDimensionIds: Map<ShipId, String>): VEntity?
+    fun iNbtDeserialize(tag: CompoundTag): VEntity?
 
-    @Internal fun iOnMakeVEntity(level: ServerLevel): Boolean
+    @Internal fun iOnMakeVEntity(level: ServerLevel): List<CompletableFuture<Boolean>>
     @Internal fun iOnDeleteVEntity(level: ServerLevel)
 }
 
@@ -57,22 +54,24 @@ abstract class ExtendableVEntity(): VEntity, ExtendableVEntityIMethods {
     }
 
 
-    final override fun stillExists(allShips: QueryableShipData<Ship>, dimensionIds: Collection<ShipId>): Boolean {
-        return iStillExists(allShips, dimensionIds)
+    final override fun stillExists(allShips: QueryableShipData<Ship>, ): Boolean {
+        return iStillExists(allShips)
     }
 
-    final override fun attachedToShips(dimensionIds: Collection<ShipId>): List<ShipId> {
-        return iAttachedToShips(dimensionIds)
+    final override fun attachedToShips(): List<ShipId> {
+        return iAttachedToShips()
     }
 
     final override fun getAttachmentPoints(shipId: Long): List<Vector3d> {
         return iGetAttachmentPoints(shipId)
     }
 
-    final override fun moveShipyardPosition(level: ServerLevel, previous: BlockPos, new: BlockPos, newShipId: ShipId) {
-        TODO()
-        iMoveShipyardPosition(level, previous, new, newShipId)
-        _extensions.forEach { it.onAfterMoveShipyardPositions(level, previous, new, newShipId) }
+    final override fun moveAttachmentPoints(level: ServerLevel, pointsToMove: List<Vector3d>, oldShipId: ShipId, newShipId: ShipId, oldCenter: Vector3d, newCenter: Vector3d): Boolean {
+        val res = iMoveAttachmentPoints(level, pointsToMove, oldShipId, newShipId, oldCenter, newCenter)
+        if (res) {
+            _extensions.forEach { it.onAfterMoveAttachmentPoints(level, pointsToMove, oldShipId, newShipId, oldCenter, newCenter) }
+        }
+        return res
     }
 
     final override fun copyVEntity(level: ServerLevel, mapped: Map<ShipId, ShipId>, centerPositions: Map<ShipId, Pair<Vector3d, Vector3d>>): VEntity? {
@@ -95,7 +94,7 @@ abstract class ExtendableVEntity(): VEntity, ExtendableVEntityIMethods {
         val saveTag = CompoundTag()
 
         saveTag.putInt("mID", mID)
-        saveTag.putString("dimensionId", dimensionId)
+        saveTag.putString("dimensionId", dimensionId!!)
 
         val mainTag = iNbtSerialize() ?: return null
         saveTag.put("Main", mainTag)
@@ -112,18 +111,18 @@ abstract class ExtendableVEntity(): VEntity, ExtendableVEntityIMethods {
     }
 
     @NonExtendable
-    override fun nbtDeserialize(tag: CompoundTag, lastDimensionIds: Map<ShipId, String>): VEntity? {
+    override fun nbtDeserialize(tag: CompoundTag): VEntity? {
         mID = tag.getInt("mID")
         dimensionId = tag.getString("dimensionId")
 
         val mainTag = tag.getCompound("Main")
-        val mc = iNbtDeserialize(mainTag, lastDimensionIds)
+        val mc = iNbtDeserialize(mainTag)
         _extensions.clear()
 
         val extensionsTag = tag.getCompound("Extensions")
         _extensions.addAll(extensionsTag.allKeys.mapNotNull { type ->
             val ext = VEntityExtension.fromType(type)
-            val success = ext.onDeserialize(extensionsTag.getCompound(type), lastDimensionIds)
+            val success = ext.onDeserialize(extensionsTag.getCompound(type))
             if (!success) return@mapNotNull null
             ext.onInit(this)
             ext
@@ -133,10 +132,9 @@ abstract class ExtendableVEntity(): VEntity, ExtendableVEntityIMethods {
     }
 
     @Internal
-    final override fun onMakeVEntity(level: ServerLevel): Boolean {
+    final override fun onMakeVEntity(level: ServerLevel): List<CompletableFuture<Boolean>> {
         if (dimensionId == null) {dimensionId = level.dimensionId}
-        return iOnMakeVEntity(level)
-            .also { _extensions.forEach { it.onMakeVEntity(level) } }
+        return iOnMakeVEntity(level).also { _extensions.forEach { it.onMakeVEntity(level) } }
     }
 
     @Internal

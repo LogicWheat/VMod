@@ -1,14 +1,17 @@
 package net.spaceeye.vmod.vEntityManaging.types.constraints
 
 import net.minecraft.server.level.ServerLevel
+import net.spaceeye.vmod.utils.Tuple
 import net.spaceeye.vmod.vEntityManaging.*
 import net.spaceeye.vmod.vEntityManaging.util.VEAutoSerializable
 import net.spaceeye.vmod.vEntityManaging.util.TwoShipsMConstraint
-import net.spaceeye.vmod.vEntityManaging.util.mc
 import net.spaceeye.vmod.utils.Vector3d
 import org.valkyrienskies.core.api.ships.properties.ShipId
 import net.spaceeye.vmod.utils.vs.tryMovePosition
-import org.valkyrienskies.core.apigame.constraints.VSRopeConstraint
+import org.joml.Quaterniond
+import org.valkyrienskies.core.internal.joints.VSDistanceJoint
+import org.valkyrienskies.core.internal.joints.VSJointMaxForceTorque
+import org.valkyrienskies.core.internal.joints.VSJointPose
 
 class RopeConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
     override var sPos1: Vector3d by get(i++, Vector3d()).also { it.metadata["NoTagSerialization"] = true }
@@ -20,8 +23,9 @@ class RopeConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
     var stiffness: Float by get(i++, 0f)
     var damping: Float by get(i++, 0f)
     var ropeLength: Float by get(i++, 0f)
+    val compliance: Double by get(i++, 1e-100)
 
-     constructor(
+    constructor(
         sPos1: Vector3d,
         sPos2: Vector3d,
 
@@ -63,12 +67,26 @@ class RopeConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
         onMakeVEntity(level)
     }
 
-    override fun iOnMakeVEntity(level: ServerLevel): Boolean {
-        val maxForce = if (maxForce < 0) { Float.MAX_VALUE.toDouble() } else { maxForce.toDouble() }
-        val compliance = if (stiffness <= 0f) { Float.MIN_VALUE.toDouble() } else { (1f / stiffness).toDouble() }
+    override fun iOnMakeVEntity(level: ServerLevel) = withFutures {
+        if (shipId1 == -1L && shipId2 == -1L) {throw AssertionError("Both shipId's are ground")}
+        val (shipId1, shipId2, sPos1, sPos2) = when (-1L) {
+            shipId1 -> Tuple.of(null   , shipId2, sPos1 + 0.5, sPos2)
+            shipId2 -> Tuple.of(null   , shipId1, sPos2 + 0.5, sPos1)
+            else    -> Tuple.of(shipId1, shipId2, sPos1      , sPos2)
+        }
 
-        val c = VSRopeConstraint(shipId1, shipId2, compliance, sPos1.toJomlVector3d(), sPos2.toJomlVector3d(), maxForce, ropeLength.toDouble())
-        mc(c, cIDs, level) { return false }
-        return true
+        val maxForceTorque = if (maxForce < 0) {null} else {VSJointMaxForceTorque(maxForce, maxForce)}
+        val stiffness = if (stiffness < 0) {null} else {stiffness}
+        val damping = if (damping < 0) {null} else {damping}
+
+        val mainConstraint = VSDistanceJoint(
+            shipId1, VSJointPose(sPos1.toJomlVector3d(), Quaterniond()),
+            shipId2, VSJointPose(sPos2.toJomlVector3d(), Quaterniond()),
+            maxForceTorque, compliance,
+            0f, ropeLength,
+            stiffness = stiffness,
+            damping = damping
+        )
+        mc(mainConstraint, level)
     }
 }

@@ -36,10 +36,11 @@ import net.spaceeye.vmod.utils.vs.teleportShipWithConnected
 import net.spaceeye.vmod.utils.vs.traverseGetConnectedShips
 import org.joml.AxisAngle4d
 import org.joml.Quaterniond
-import net.spaceeye.vmod.compat.vsBackwardsCompat.*
 import net.spaceeye.vmod.toolgun.ToolgunInstance
 import net.spaceeye.vmod.toolgun.gui.Presettable.Companion.presettable
 import net.spaceeye.vmod.toolgun.modes.extensions.SnapModeNetworking.S2CSendTraversalInfo
+import org.valkyrienskies.core.api.VsBeta
+import org.valkyrienskies.core.api.bodies.properties.rebuild
 import org.valkyrienskies.core.api.ships.ClientShip
 import org.valkyrienskies.core.api.ships.ServerShip
 import org.valkyrienskies.core.api.ships.properties.ShipId
@@ -355,7 +356,7 @@ interface SnapModeServerPart {
         val rpoint1 = Vector3d(rpoint2) + dir2.normalize() * paDistanceFromBlock
 
         val shipId1: ShipId = ship1.id
-        val shipId2: ShipId = ship2?.id ?: level.shipObjectWorld.dimensionToGroundBodyIdImmutable[level.dimensionId]!!
+        val shipId2: ShipId = ship2?.id ?: -1L
 
         val ventity = paVEntityBuilder(spoint1, spoint2, rpoint1, rpoint2, ship1, ship2, shipId1, shipId2, Pair(paFirstResult, paSecondResult), paDistanceFromBlock)
         level.makeVEntity(ventity){it.addForVMod(player)}
@@ -436,7 +437,7 @@ interface SnapModeServerPart {
         val rpoint1 = Vector3d(rpoint2) + dir2.normalize() * paDistanceFromBlock
 
         val shipId1: ShipId = ship1.id
-        val shipId2: ShipId = ship2?.id ?: level.shipObjectWorld.dimensionToGroundBodyIdImmutable[level.dimensionId]!!
+        val shipId2: ShipId = ship2?.id ?: -1L
 
         val ventity = paVEntityBuilder(spoint1, spoint2, rpoint1, rpoint2, ship1, ship2, shipId1, shipId2, Pair(paFirstResult, paSecondResult), paDistanceFromBlock)
         level.makeVEntity(ventity){it.addForVMod(player)}

@@ -38,7 +38,7 @@ dependencies {
 
     modApi("org.valkyrienskies:valkyrienskies-120-fabric:${project.vs2_version}") { transitive = false }
     compileOnly("org.valkyrienskies.core:api:${project.vs_core_version}") { transitive = false }
-    compileOnly("org.valkyrienskies.core:api-game:${project.vs_core_version}") { transitive = false }
+    compileOnly("org.valkyrienskies.core:internal:${project.vs_core_version}") { transitive = false }
     compileOnly("org.valkyrienskies.core:util:${project.vs_core_version}") { transitive = false }
     compileOnly("org.valkyrienskies.core:impl:${project.vs_core_version}") { transitive = false }
 

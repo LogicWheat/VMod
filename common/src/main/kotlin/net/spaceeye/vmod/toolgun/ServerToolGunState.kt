@@ -3,12 +3,14 @@ package net.spaceeye.vmod.toolgun
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.world.item.Item
 import net.spaceeye.vmod.ELOG
 import net.spaceeye.vmod.VMConfig
 import net.spaceeye.vmod.vEntityManaging.VEntityId
 import net.spaceeye.vmod.vEntityManaging.removeVEntity
 import net.spaceeye.vmod.events.SessionEvents
 import net.spaceeye.vmod.networking.*
+import net.spaceeye.vmod.physgun.PhysgunItem
 import net.spaceeye.vmod.reflectable.AutoSerializable
 import net.spaceeye.vmod.toolgun.modes.BaseMode
 import net.spaceeye.vmod.toolgun.modes.BaseNetworking

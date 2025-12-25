@@ -7,9 +7,11 @@ import net.spaceeye.vmod.vEntityManaging.*
 import net.spaceeye.vmod.vEntityManaging.util.ExtendableVEntity
 import net.spaceeye.vmod.vEntityManaging.util.VEAutoSerializable
 import net.spaceeye.vmod.utils.Vector3d
+import net.spaceeye.vmod.vEntityManaging.VEntity.Companion.withFutures
 import org.valkyrienskies.core.api.ships.QueryableShipData
 import org.valkyrienskies.core.api.ships.Ship
 import org.valkyrienskies.core.api.ships.properties.ShipId
+import java.util.concurrent.CompletableFuture
 
 class DisabledCollisionConstraint(): ExtendableVEntity(), VEAutoSerializable {
     @JsonIgnore private var i = 0
@@ -22,20 +24,20 @@ class DisabledCollisionConstraint(): ExtendableVEntity(), VEAutoSerializable {
         this.shipId2 = shipId2
     }
 
-    override fun iStillExists(allShips: QueryableShipData<Ship>, dimensionIds: Collection<ShipId>): Boolean {
+    override fun iStillExists(allShips: QueryableShipData<Ship>): Boolean {
         val ship1Exists = allShips.contains(shipId1)
         val ship2Exists = allShips.contains(shipId2)
 
         return     (ship1Exists && ship2Exists)
-                || (ship1Exists && dimensionIds.contains(shipId1))
-                || (ship2Exists && dimensionIds.contains(shipId2))
+                || (ship1Exists && -1L == shipId1)
+                || (ship2Exists && -1L == shipId2)
     }
 
-    override fun iAttachedToShips(dimensionIds: Collection<ShipId>): List<ShipId> {
+    override fun iAttachedToShips(): List<ShipId> {
         val toReturn = mutableListOf<ShipId>()
 
-        if (!dimensionIds.contains(shipId1)) {toReturn.add(shipId1)}
-        if (!dimensionIds.contains(shipId2)) {toReturn.add(shipId2)}
+        if (-1L != shipId1) {toReturn.add(shipId1)}
+        if (-1L != shipId2) {toReturn.add(shipId2)}
 
         return toReturn
     }
@@ -43,23 +45,19 @@ class DisabledCollisionConstraint(): ExtendableVEntity(), VEAutoSerializable {
     override fun iGetAttachmentPoints(shipId: Long): List<Vector3d> = emptyList()
     override fun iOnScaleBy(level: ServerLevel, scaleBy: Double, scalingCenter: Vector3d) {}
     override fun iCopyVEntity(level: ServerLevel, mapped: Map<ShipId, ShipId>, centerPositions: Map<ShipId, Pair<Vector3d, Vector3d>>): VEntity? { return DisabledCollisionConstraint(mapped[shipId1] ?: return null, mapped[shipId2] ?: return null) }
+    override fun iMoveAttachmentPoints(level: ServerLevel, pointsToMove: List<Vector3d>, oldShipId: ShipId, newShipId: ShipId, oldCenter: Vector3d, newCenter: Vector3d): Boolean {return true}
 
     private var beingRemoved = false
-    override fun iOnMakeVEntity(level: ServerLevel): Boolean {
-        return level.disableCollisionBetween(shipId1, shipId2) {
+    override fun iOnMakeVEntity(level: ServerLevel) = listOf(
+        level.disableCollisionBetween(shipId1, shipId2) {
             if (!beingRemoved) {
                 beingRemoved = true
                 level.removeVEntity(this)
             }
         }
-    }
+    )
     override fun iOnDeleteVEntity(level: ServerLevel) {
         beingRemoved = true
         level.enableCollisionBetween(shipId1, shipId2)
-    }
-
-    override fun iMoveShipyardPosition(level: ServerLevel, previous: BlockPos, new: BlockPos, newShipId: ShipId) {
-        level.makeVEntity(DisabledCollisionConstraint(shipId1, newShipId)) {}
-        level.makeVEntity(DisabledCollisionConstraint(shipId2, newShipId)) {}
     }
 }

@@ -6,15 +6,21 @@ import net.minecraft.server.level.ServerLevel
 import net.spaceeye.vmod.vEntityManaging.VEntity
 import net.spaceeye.vmod.vEntityManaging.VSJointUser
 import net.spaceeye.vmod.utils.*
+import net.spaceeye.vmod.utils.vs.gtpa
+import net.spaceeye.vmod.vEntityManaging.makeVEntityWithId
+import net.spaceeye.vmod.vEntityManaging.removeVEntity
 import org.jetbrains.annotations.ApiStatus.NonExtendable
 import org.valkyrienskies.core.api.ships.QueryableShipData
 import org.valkyrienskies.core.api.ships.Ship
 import org.valkyrienskies.core.api.ships.properties.ShipId
-import net.spaceeye.vmod.compat.vsBackwardsCompat.*
-import org.valkyrienskies.mod.common.shipObjectWorld
+import org.valkyrienskies.core.api.world.PhysLevel
+import org.valkyrienskies.core.internal.joints.VSJoint
+import org.valkyrienskies.core.internal.joints.VSJointId
+import java.util.Collections
+import java.util.concurrent.CompletableFuture
 
 abstract class TwoShipsMConstraint(): ExtendableVEntity(), VSJointUser {
-    @JsonIgnore val cIDs = mutableListOf<VSJointId>() // should be used to store VS ids
+    @JsonIgnore val cIDs = Collections.synchronizedList<VSJointId>(mutableListOf()) // should be used to store VS ids
     @JsonIgnore protected var i = 0 // use in get for auto serialization TODO move it to ExtendableVEntity?
 
     abstract var shipId1: Long
@@ -22,20 +28,20 @@ abstract class TwoShipsMConstraint(): ExtendableVEntity(), VSJointUser {
     abstract var sPos1: Vector3d
     abstract var sPos2: Vector3d
 
-    override fun iStillExists(allShips: QueryableShipData<Ship>, dimensionIds: Collection<ShipId>): Boolean {
+    override fun iStillExists(allShips: QueryableShipData<Ship>): Boolean {
         val ship1Exists = allShips.contains(shipId1)
         val ship2Exists = allShips.contains(shipId2)
 
         return     (ship1Exists && ship2Exists)
-                || (ship1Exists && dimensionIds.contains(shipId2))
-                || (ship2Exists && dimensionIds.contains(shipId1))
+                || (ship1Exists && -1L == shipId2)
+                || (ship2Exists && -1L == shipId1)
     }
 
-    override fun iAttachedToShips(dimensionIds: Collection<ShipId>): List<ShipId> {
+    override fun iAttachedToShips(): List<ShipId> {
         val toReturn = mutableListOf<ShipId>()
 
-        if (!dimensionIds.contains(shipId1)) {toReturn.add(shipId1)}
-        if (!dimensionIds.contains(shipId2)) {toReturn.add(shipId2)}
+        if (-1L != shipId1) {toReturn.add(shipId1)}
+        if (-1L != shipId2) {toReturn.add(shipId2)}
 
         return toReturn
     }
@@ -53,6 +59,28 @@ abstract class TwoShipsMConstraint(): ExtendableVEntity(), VSJointUser {
             }
         }
 
+    override fun iMoveAttachmentPoints(
+        level: ServerLevel,
+        pointsToMove: List<Vector3d>,
+        oldShipId: ShipId,
+        newShipId: ShipId,
+        oldCenter: Vector3d,
+        newCenter: Vector3d
+    ): Boolean {
+        val (mapped, centers) = if (oldShipId == shipId1) {
+            Pair(mapOf(oldShipId to newShipId, shipId2 to shipId2),
+                 mapOf(oldShipId to (oldCenter to newCenter), shipId2 to (sPos2 to sPos2)))
+        } else {
+            Pair(mapOf(oldShipId to newShipId, shipId1 to shipId1),
+                 mapOf(oldShipId to (oldCenter to newCenter), shipId1 to (sPos1 to sPos1)))
+        }
+
+        val copy = copyVEntity(level, mapped, centers)!!
+        level.removeVEntity(this)
+        level.makeVEntityWithId(copy, mID) {}
+        return false
+    }
+
     @NonExtendable
     override fun nbtSerialize(): CompoundTag? {
         val tag = super.nbtSerialize() ?: return null
@@ -64,24 +92,36 @@ abstract class TwoShipsMConstraint(): ExtendableVEntity(), VSJointUser {
     }
 
     @NonExtendable
-    override fun nbtDeserialize(tag: CompoundTag, lastDimensionIds: Map<ShipId, String>): VEntity? {
+    override fun nbtDeserialize(tag: CompoundTag): VEntity? {
         sPos1 = tag.getMyVector3d("sPos1")
         sPos2 = tag.getMyVector3d("sPos2")
         shipId1 = tag.getLong("shipId1")
         shipId2 = tag.getLong("shipId2")
 
-        ServerObjectsHolder.shipObjectWorld?.dimensionToGroundBodyIdImmutable?.let { map ->
-            shipId1 = map[lastDimensionIds[shipId1]] ?: shipId1
-            shipId2 = map[lastDimensionIds[shipId2]] ?: shipId2
-        }
-
-        return super.nbtDeserialize(tag, lastDimensionIds)
+        return super.nbtDeserialize(tag)
     }
 
     /**
      * IF YOU'RE OVERRIDING THIS REMEMBER TO CALL SUPER METHOD
      */
     override fun iOnDeleteVEntity(level: ServerLevel) {
-        cIDs.forEach { level.shipObjectWorld.removeConstraint(it) }
+        cIDs.forEach { level.gtpa.removeJoint(it) }
+    }
+
+    class HelperFn(val cIDs: MutableList<VSJointId>, val checkValid: ((VSJoint, PhysLevel) -> Boolean)? = null) {
+        val futures = mutableListOf<CompletableFuture<Boolean>>()
+
+        fun mc(joint: VSJoint, level: ServerLevel) {
+            futures.add(mc(joint, cIDs, level, checkValid))
+        }
+    }
+
+    fun withFutures(fn: HelperFn.(TwoShipsMConstraint) -> Unit): List<CompletableFuture<Boolean>> {
+        val inst = HelperFn(cIDs) {joint, level ->
+               (joint.shipId0 == null || level.getShipById(joint.shipId0!!) != null)
+            && (joint.shipId1 == null || level.getShipById(joint.shipId1!!) != null)
+        }
+        inst.fn(this)
+        return inst.futures
     }
 }

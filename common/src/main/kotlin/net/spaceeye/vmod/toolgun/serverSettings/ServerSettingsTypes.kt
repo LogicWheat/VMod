@@ -9,7 +9,7 @@ interface ServerSettingsGUIBuilder: GUIBuilder
 object ServerSettingsTypes: Registry<ServerSettingsGUIBuilder>() {
     init {
         register(ServerLimitsSettings::class)
-        register(DimensionalGravitySettings::class)
+//        register(DimensionalGravitySettings::class)
         register(RolesPermissionsSettings::class)
         register(PlayerRoleManager::class)
     }

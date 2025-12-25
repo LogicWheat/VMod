@@ -11,10 +11,9 @@ import net.spaceeye.vmod.toolgun.modes.extensions.BasicConnectionExtension
 import net.spaceeye.vmod.toolgun.modes.gui.MassChangerGUI
 import net.spaceeye.vmod.toolgun.modes.hud.MassChangerHUD
 import net.spaceeye.vmod.reflectable.ByteSerializableItem.get
+import net.spaceeye.vmod.rendering.ShipsColorModulator
 import net.spaceeye.vmod.shipAttachments.WeightSynchronizer
 import net.spaceeye.vmod.utils.*
-import net.spaceeye.vmod.compat.vsBackwardsCompat.*
-import net.spaceeye.vmod.rendering.ShipsColorModulator
 import net.spaceeye.vmod.toolgun.gui.Presettable
 import net.spaceeye.vmod.toolgun.gui.Presettable.Companion.presettable
 import net.spaceeye.vmod.toolgun.modes.extensions.ConstantClientRaycastingExtension
@@ -39,7 +38,7 @@ class MassChangerMode: ExtendableToolgunMode(), MassChangerGUI, MassChangerHUD {
         val lShip = level.shipObjectWorld.loadedShips.getById(ship.id)!!
         if (!persistent) {
             WeightSynchronizer.updateMass(level, ship, false, syncMassPerBlock, massPerBlock, newMass)
-            lShip.removeAttachment<WeightSynchronizer>()
+            lShip.removeAttachment(WeightSynchronizer::class.java)
             return
         }
 
@@ -57,8 +56,8 @@ class MassChangerMode: ExtendableToolgunMode(), MassChangerGUI, MassChangerHUD {
         val ship = raycastResult.ship as? ServerShip ?: return
 
         val lShip = level.shipObjectWorld.loadedShips.getById(ship.id)
-        if (lShip?.getAttachment<WeightSynchronizer>() != null) {
-            lShip.removeAttachment<WeightSynchronizer>()
+        if (lShip?.getAttachment(WeightSynchronizer::class.java) != null) {
+            lShip.removeAttachment(WeightSynchronizer::class.java)
         }
         WeightSynchronizer.updateMass(level, ship, true, false, -1.0, -1.0)
     }

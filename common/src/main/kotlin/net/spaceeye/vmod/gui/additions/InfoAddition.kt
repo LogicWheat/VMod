@@ -207,7 +207,7 @@ object InfoAdditionNetworking: ServersideNetworking {
             s2cShipInfoQueryResponse.sendToClient(player, S2CShipInfoQueryResponse(
                 pkt.shipId,
                 ship.inertiaData.mass,
-                GravityController.getOrCreate(ship).effectiveGravity(),
+                Vector3d(GravityController.getOrCreate(ship).effectiveGravity()),
                 changedMassData != null,
                 0.0,//originalMass,
                 VSJointsTracker.getIdsOfShip(ship.id).size,

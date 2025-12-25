@@ -1,13 +1,18 @@
 package net.spaceeye.vmod.vEntityManaging.types.constraints
 
 import net.minecraft.server.level.ServerLevel
+import net.spaceeye.vmod.utils.Tuple
 import net.spaceeye.vmod.vEntityManaging.VEntity
 import net.spaceeye.vmod.vEntityManaging.util.*
 import net.spaceeye.vmod.utils.Vector3d
 import org.joml.Quaterniond
 import org.joml.Quaterniondc
 import org.valkyrienskies.core.api.ships.properties.ShipId
-import org.valkyrienskies.core.apigame.constraints.VSFixedOrientationConstraint
+import org.valkyrienskies.core.internal.joints.VSD6Joint
+import org.valkyrienskies.core.internal.joints.VSJointMaxForceTorque
+import org.valkyrienskies.core.internal.joints.VSJointPose
+import java.util.EnumMap
+import java.util.concurrent.CompletableFuture
 
 class SyncRotationConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
     override var sPos1: Vector3d get() = Vector3d(); set(_) {}
@@ -19,6 +24,7 @@ class SyncRotationConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
     var sRot2: Quaterniond by get(i++, Quaterniond())
 
     var maxForce: Float by get(i++, -1f)
+    val compliance: Double by get(i++, 1e-100)
 
     constructor(
         sRot1: Quaterniondc,
@@ -41,12 +47,27 @@ class SyncRotationConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
     override fun iOnScaleBy(level: ServerLevel, scaleBy: Double, scalingCenter: Vector3d) {}
     override fun iGetAttachmentPoints(shipId: ShipId): List<Vector3d> = emptyList()
 
-    override fun iOnMakeVEntity(level: ServerLevel): Boolean {
-        val maxForce = if (maxForce < 0) { Float.MAX_VALUE.toDouble() } else { maxForce.toDouble() }
-        val compliance = Double.MIN_VALUE
+    override fun iOnMakeVEntity(level: ServerLevel) = withFutures {
+        if (shipId1 == -1L && shipId2 == -1L) {throw AssertionError("Both shipId's are ground")}
+        val (shipId1, shipId2, sRot1, sRot2) = when (-1L) {
+            shipId1 -> Tuple.of(null   , shipId2, sRot1, sRot2)
+            shipId2 -> Tuple.of(null   , shipId1, sRot2, sRot1)
+            else    -> Tuple.of(shipId1, shipId2, sRot1, sRot2)
+        }
 
-        val c = VSFixedOrientationConstraint(shipId1, shipId2, compliance, sRot1, sRot2, maxForce)
-        mc(c, cIDs, level) {return false}
-        return true
+        val maxForceTorque = if (maxForce < 0) {null} else {VSJointMaxForceTorque(maxForce, maxForce)}
+//        val stiffness = if (stiffness < 0) {null} else {stiffness}
+//        val damping = if (damping < 0) {null} else {damping}
+        val mainConstraint = VSD6Joint(
+            shipId1, VSJointPose(org.joml.Vector3d(), sRot1),
+            shipId2, VSJointPose(org.joml.Vector3d(), sRot2),
+            maxForceTorque, compliance,
+            EnumMap(mapOf(
+                Pair(VSD6Joint.D6Axis.X, VSD6Joint.D6Motion.FREE),
+                Pair(VSD6Joint.D6Axis.Y, VSD6Joint.D6Motion.FREE),
+                Pair(VSD6Joint.D6Axis.Z, VSD6Joint.D6Motion.FREE),
+            ))
+        )
+        mc(mainConstraint, level)
     }
 }

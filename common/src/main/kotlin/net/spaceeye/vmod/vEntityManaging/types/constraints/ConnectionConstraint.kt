@@ -4,15 +4,15 @@ import net.minecraft.server.level.ServerLevel
 import net.spaceeye.vmod.vEntityManaging.*
 import net.spaceeye.vmod.vEntityManaging.util.VEAutoSerializable
 import net.spaceeye.vmod.vEntityManaging.util.TwoShipsMConstraint
-import net.spaceeye.vmod.vEntityManaging.util.mc
-import net.spaceeye.vmod.reflectable.TagSerializableItem
 import net.spaceeye.vmod.utils.*
 import net.spaceeye.vmod.utils.vs.*
 import org.joml.Quaterniond
 import org.valkyrienskies.core.api.ships.properties.ShipId
-import org.valkyrienskies.core.apigame.constraints.VSAttachmentConstraint
-import org.valkyrienskies.core.apigame.constraints.VSFixedOrientationConstraint
-import org.valkyrienskies.core.apigame.constraints.VSHingeOrientationConstraint
+import org.valkyrienskies.core.internal.joints.VSDistanceJoint
+import org.valkyrienskies.core.internal.joints.VSFixedJoint
+import org.valkyrienskies.core.internal.joints.VSJointMaxForceTorque
+import org.valkyrienskies.core.internal.joints.VSJointPose
+import org.valkyrienskies.core.internal.joints.VSRevoluteJoint
 
 class ConnectionConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
     //TODO unify and rename values (needs backwards compat)
@@ -31,6 +31,7 @@ class ConnectionConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
     var maxForce: Float by get(i++, -1f)
     var stiffness: Float by get(i++, -1f)
     var damping: Float by get(i++, -1f)
+    val compliance: Double by get(i++, 1e-100)
 
     var sRot1: Quaterniond by get(i++, Quaterniond())
     var sRot2: Quaterniond by get(i++, Quaterniond())
@@ -78,20 +79,14 @@ class ConnectionConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
      }
 
     override fun iCopyVEntity(level: ServerLevel, mapped: Map<ShipId, ShipId>, centerPositions: Map<ShipId, Pair<Vector3d, Vector3d>>): VEntity? {
-        val new = ConnectionConstraint(
+        return ConnectionConstraint(
             tryMovePosition(sPos1, shipId1, centerPositions) ?: return null,
             tryMovePosition(sPos2, shipId2, centerPositions) ?: return null,
-            sDir1, sDir2, sRot1, sRot2,
+            sDir1.copy(), sDir2.copy(), sRot1.get(Quaterniond()), sRot2.get(Quaterniond()),
             mapped[shipId1] ?: return null,
             mapped[shipId2] ?: return null,
             maxForce, stiffness, damping, distance, connectionMode
         )
-        new.sDir1 = sDir1.copy()
-        new.sDir2 = sDir2.copy()
-        new.sRot1 = Quaterniond(sRot1)
-        new.sRot2 = Quaterniond(sRot2)
-
-        return new
     }
 
     override fun iOnScaleBy(level: ServerLevel, scaleBy: Double, scalingCenter: Vector3d) {
@@ -100,14 +95,26 @@ class ConnectionConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
         onMakeVEntity(level)
     }
 
-    override fun iOnMakeVEntity(level: ServerLevel): Boolean {
-        val maxForce = if (maxForce < 0) { Float.MAX_VALUE.toDouble() } else { maxForce.toDouble() }
-        val compliance = if (stiffness <= 0f) { Float.MIN_VALUE.toDouble() } else { (1f / stiffness).toDouble() }
+    override fun iOnMakeVEntity(level: ServerLevel) = withFutures {
+        if (shipId1 == -1L && shipId2 == -1L) {throw AssertionError("Both shipId's are ground")}
+        val (shipId1, shipId2, sPos1, sPos2, sDir1, sDir2, sRot1, sRot2) = when (-1L) {
+            shipId1 -> Tuple.of(null   , shipId2, sPos1 + 0.5, sPos2,  sDir1, sDir2, sRot1, sRot2)
+            shipId2 -> Tuple.of(null   , shipId1, sPos2 + 0.5, sPos1, -sDir2, sDir1, sRot2, sRot1)
+            else    -> Tuple.of(shipId1, shipId2, sPos1      , sPos2,  sDir1, sDir2, sRot1, sRot2)
+        }
+
+        val maxForceTorque = if (maxForce < 0) {null} else {VSJointMaxForceTorque(maxForce, maxForce)}
+        val stiffness = if (stiffness < 0) {null} else {stiffness}
+        val damping = if (damping < 0) {null} else {damping}
 
         if (connectionMode == ConnectionModes.FREE_ORIENTATION) {
-            val c1 = VSAttachmentConstraint(shipId1, shipId2, compliance, sPos1.toJomlVector3d(), sPos2.toJomlVector3d(), maxForce, distance.toDouble())
-            mc(c1, cIDs, level) { return false }
-            return true
+            val c = VSDistanceJoint(
+                shipId1, VSJointPose(sPos1.toJomlVector3d(), Quaterniond()),
+                shipId2, VSJointPose(sPos2.toJomlVector3d(), Quaterniond()),
+                maxForceTorque, compliance, distance, distance, stiffness = stiffness, damping = damping
+            )
+            mc(c, level)
+            return@withFutures
         }
 
         val p11 = sPos1.toJomlVector3d()
@@ -115,19 +122,51 @@ class ConnectionConstraint(): TwoShipsMConstraint(), VEAutoSerializable {
         val p12 = (sPos1 + sDir1 * distance).toJomlVector3d()
         val p22 = sPos2.toJomlVector3d()
 
-        val a1 = VSAttachmentConstraint(shipId1, shipId2, compliance, p11, p21, maxForce, 0.0)
-        val a2 = VSAttachmentConstraint(shipId1, shipId2, compliance, p12, p22, maxForce, 0.0)
+        when (connectionMode) {
+            ConnectionModes.FIXED_ORIENTATION -> {
+                val d1 = VSFixedJoint(
+                    shipId1, VSJointPose(p11, sRot1.invert(Quaterniond())),
+                    shipId2, VSJointPose(p21, sRot2.invert(Quaterniond())),
+                    maxForceTorque, compliance
+                )
+                val d2 = VSFixedJoint(
+                    shipId1, VSJointPose(p12, sRot1.invert(Quaterniond())),
+                    shipId2, VSJointPose(p22, sRot2.invert(Quaterniond())),
+                    maxForceTorque, compliance
+                )
 
-        mc(a1, cIDs, level) {return false}
-        mc(a2, cIDs, level) {return false}
+                mc(d1, level)
+                mc(d2, level)
+            }
+            ConnectionModes.HINGE_ORIENTATION -> {
+                val d1 = VSDistanceJoint(
+                    shipId1, VSJointPose(p11, Quaterniond()),
+                    shipId2, VSJointPose(p21, Quaterniond()),
+                    maxForceTorque, compliance, 0f, 0f, stiffness = stiffness, damping = damping
+                )
+                val d2 = VSDistanceJoint(
+                    shipId1, VSJointPose(p12, Quaterniond()),
+                    shipId2, VSJointPose(p22, Quaterniond()),
+                    maxForceTorque, compliance, 0f, 0f, stiffness = stiffness, damping = damping
+                )
 
-        val r1 = when (connectionMode) {
-            ConnectionModes.FIXED_ORIENTATION -> VSFixedOrientationConstraint(shipId1, shipId2, compliance, sRot1.invert(Quaterniond()), sRot2.invert(Quaterniond()), maxForce)
-            ConnectionModes.HINGE_ORIENTATION -> VSHingeOrientationConstraint(shipId1, shipId2, compliance, getHingeRotation(sDir1), getHingeRotation(sDir2), maxForce)
-            else -> throw AssertionError("Impossible")
+                val r1 = VSRevoluteJoint(
+                    shipId1, VSJointPose(p11, getHingeRotation(sDir1)),
+                    shipId2, VSJointPose(p21, getHingeRotation(sDir2)),
+                    maxForceTorque, compliance, driveFreeSpin = true
+                )
+                val r2 = VSRevoluteJoint(
+                    shipId1, VSJointPose(p12, getHingeRotation(sDir1)),
+                    shipId2, VSJointPose(p22, getHingeRotation(sDir2)),
+                    maxForceTorque, compliance, driveFreeSpin = true
+                )
+
+                mc(d1, level)
+                mc(d2, level)
+                mc(r1, level)
+                mc(r2, level)
+            }
+            ConnectionModes.FREE_ORIENTATION -> throw AssertionError()
         }
-        mc(r1, cIDs, level) {return false}
-
-        return true
     }
 }

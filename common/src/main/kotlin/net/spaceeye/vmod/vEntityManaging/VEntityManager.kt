@@ -20,18 +20,27 @@ import net.spaceeye.vmod.events.SessionEvents
 import net.spaceeye.vmod.toolgun.VMToolgun
 import net.spaceeye.vmod.utils.PosMapList
 import net.spaceeye.vmod.utils.ServerObjectsHolder
+import net.spaceeye.vmod.utils.Tuple
+import net.spaceeye.vmod.utils.Tuple3
+import net.spaceeye.vmod.utils.Vector3d
 import net.spaceeye.vmod.utils.addCustomServerClosable
+import net.spaceeye.vmod.utils.vs.gtpa
 import org.apache.commons.lang3.tuple.MutablePair
 import org.jetbrains.annotations.ApiStatus.Internal
+import org.joml.Vector3ic
 import org.valkyrienskies.core.api.ships.QueryableShipData
 import org.valkyrienskies.core.api.ships.ServerShip
 import org.valkyrienskies.core.api.ships.Ship
 import org.valkyrienskies.core.api.ships.properties.ShipId
-import org.valkyrienskies.core.apigame.world.properties.DimensionId
-import org.valkyrienskies.core.impl.hooks.VSEvents
+import org.valkyrienskies.core.api.world.properties.DimensionId
+import org.valkyrienskies.core.internal.world.VsiPhysLevel
+import org.valkyrienskies.core.util.pollUntilEmpty
+import org.valkyrienskies.mod.api.vsApi
 import org.valkyrienskies.mod.common.dimensionId
 import org.valkyrienskies.mod.common.shipObjectWorld
 import java.util.*
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.math.max
 
 internal const val SAVE_TAG_NAME_STRING = "vmod_VEntities"
@@ -53,6 +62,10 @@ open class VEntityManager: SavedData() {
 
     private val tickingVEntities = Collections.synchronizedList(mutableListOf<Tickable>())
 
+    // dimension, ventity, add = true / delete = false
+    private val physThreadChanges = ConcurrentLinkedQueue<Tuple3<DimensionId, VEntity, Boolean>>()
+    private val physThreadTickable = mutableMapOf<String, MutableMap<Int, Tickable>>()
+
     private val toLoadVEntities = mutableListOf<VEntity>()
     private val groupedToLoadVEntities = mutableMapOf<ShipId, MutableList<LoadingGroup>>()
     private val shipDataStatus = mutableMapOf<ShipId, ShipData>()
@@ -65,16 +78,14 @@ open class VEntityManager: SavedData() {
     private var nextDimensionId = -1L
 
     fun saveActiveVEntities(tag: CompoundTag): CompoundTag {
-        val dimensionIds = dimensionToGroundBodyIdImmutable!!.values
-
         val vEntitiesTag = ListTag()
-        idToVEntity.forEach { (_, it) -> saveVEntityToList(it, dimensionIds, vEntitiesTag) }
+        idToVEntity.forEach { (_, it) -> saveVEntityToList(it, vEntitiesTag) }
         tag.put(SAVE_TAG_NAME_STRING, vEntitiesTag)
 
         return tag
     }
 
-    fun loadVEntityFromTag(tag: CompoundTag, lastDimensionIds: Map<ShipId, String>): VEntity? {
+    fun loadVEntityFromTag(tag: CompoundTag): VEntity? {
         var strType = "Unknown"
 
         try {
@@ -83,7 +94,7 @@ open class VEntityManager: SavedData() {
         return VEntityTypes
             .strTypeToSupplier(strType)
             .get()
-            .nbtDeserialize(data, lastDimensionIds) ?: run { ELOG("Failed to deserialize VEntity of type $strType"); null }
+            .nbtDeserialize(data) ?: run { ELOG("Failed to deserialize VEntity of type $strType"); null }
         } catch (e: Exception) { ELOG("Failed to load VEntity of type $strType\n${e.stackTraceToString()}")
         } catch (e: Error    ) { ELOG("Failed to load VEntity of type $strType\n${e.stackTraceToString()}")}
 
@@ -92,11 +103,10 @@ open class VEntityManager: SavedData() {
 
     internal fun saveVEntityToList(
         vEntity: VEntity,
-        dimensionIds: Collection<ShipId>,
         vEntitiesTag: ListTag
     ) {
         try {
-            if (!vEntity.stillExists(allShips!!, dimensionIds)) { return }
+            if (!vEntity.stillExists(allShips!!)) { return }
 
             val data = vEntity.nbtSerialize() ?: run { WLOG("Unable to serialize VEntity ${vEntity.getType()} with ID ${vEntity.mID}"); null } ?: return
             val ctag = CompoundTag()
@@ -109,7 +119,6 @@ open class VEntityManager: SavedData() {
 
     private fun saveNotLoadedVEntities(tag: CompoundTag): CompoundTag {
         val vEntitiesTag = tag[SAVE_TAG_NAME_STRING] as ListTag
-        val dimensionIds = dimensionToGroundBodyIdImmutable!!.values
 
         val visited = mutableSetOf<LoadingGroup>()
         val visitedVEntities = mutableSetOf<Int>()
@@ -120,9 +129,9 @@ open class VEntityManager: SavedData() {
                 for (vEntity in group.vEntitiesToLoad) {
                     if (visitedVEntities.contains(vEntity.mID)) {continue}
                     visitedVEntities.add(vEntity.mID)
-                    saveVEntityToList(vEntity, dimensionIds, vEntitiesTag)
+                    saveVEntityToList(vEntity, vEntitiesTag)
 
-                    if (!vEntity.stillExists(allShips!!, dimensionIds)) {continue}
+                    if (!vEntity.stillExists(allShips!!)) {continue}
                 }
             }
         }
@@ -130,48 +139,21 @@ open class VEntityManager: SavedData() {
         return tag
     }
 
-    internal fun saveDimensionIds(tag: CompoundTag): CompoundTag {
-        val ids = dimensionToGroundBodyIdImmutable!!
-
-        val idsTag = CompoundTag()
-        for ((dimensionId, shipId) in ids) { idsTag.putLong(dimensionId, shipId) }
-
-        tag.put("lastDimensionIds", idsTag)
-
-        return tag
-    }
-
     override fun save(tag: CompoundTag): CompoundTag {
-        var tag = saveDimensionIds(tag)
-        tag = saveActiveVEntities(tag)
+        var tag = saveActiveVEntities(tag)
         tag = saveNotLoadedVEntities(tag)
 
         instance = null
         return tag
     }
 
-    //It's loading them the other way around because it needs to get dimensionId from saved shipId
-    internal fun loadDimensionIds(tag: CompoundTag): Map<Long, String> {
-        val ret = mutableMapOf<Long, String>()
-
-        if (!tag.contains("lastDimensionIds")) {
-            return dimensionToGroundBodyIdImmutable!!.map { (k, v) -> Pair(v, k) }.toMap()
-        }
-
-        val dtag = tag["lastDimensionIds"] as CompoundTag
-        for (dimensionId in dtag.allKeys) { ret[dtag.getLong(dimensionId)] = dimensionId }
-
-        return ret
-    }
-
     private fun loadDataFromTag(tag: CompoundTag) {
-        val lastDimensionIds = loadDimensionIds(tag)
         val vEntitiesTag = (tag[SAVE_TAG_NAME_STRING] ?: return) as ListTag
 
         var count = 0
         var maxId = vEntityIdCounter
         for (ctag in vEntitiesTag) {
-            toLoadVEntities.add(loadVEntityFromTag(ctag as CompoundTag, lastDimensionIds) ?: continue)
+            toLoadVEntities.add(loadVEntityFromTag(ctag as CompoundTag) ?: continue)
             count++
             maxId = max(maxId, toLoadVEntities.last().mID)
         }
@@ -180,14 +162,13 @@ open class VEntityManager: SavedData() {
     }
 
     private fun groupLoadedData() {
-        val dimensionIds = dimensionToGroundBodyIdImmutable!!.values
         val levels = ServerObjectsHolder.server!!.allLevels.associate { Pair(it.dimensionId, it) }
 
         val groups = mutableMapOf<MutableSet<Long>, MutableList<VEntity>>()
 
         for (vEntity in toLoadVEntities) {
-            if (!vEntity.stillExists(allShips!!, dimensionIds)) { continue }
-            val neededIds = vEntity.attachedToShips(dimensionIds)
+            if (!vEntity.stillExists(allShips!!)) { continue }
+            val neededIds = vEntity.attachedToShips()
             if (neededIds.size == 1 && neededIds.contains(-1L)) {
                 levels[vEntity.dimensionId]?.also { makeVEntityWithId(it, vEntity, vEntity.mID) {} }
                 continue
@@ -216,7 +197,7 @@ open class VEntityManager: SavedData() {
     }
 
     private fun createVEntities() {
-        VSEvents.shipLoadEvent.on { (ship), handler ->
+        vsApi.shipLoadEvent.on { event, handler -> val ship = event.ship
             setLoadedId(ship)
             if (groupedToLoadVEntities.isEmpty()) {
                 handler.unregister()
@@ -231,25 +212,36 @@ open class VEntityManager: SavedData() {
     }
 
     private fun tryMakeVEntity(entity: VEntity, level: ServerLevel, onFailure: () -> Unit, rest: () -> Unit) {
-        for (i in 0 until 10) {
-            if (try {entity.onMakeVEntity(level)} catch (e: Throwable) {ELOG(e.stackTraceToString()); false}) {return rest()}
-        }
+        var futures = entity.onMakeVEntity(level)
 
-        var attempts = 0
-        val maxAttempts = VMConfig.SERVER.CONSTRAINT_CREATION_ATTEMPTS
-        SessionEvents.serverOnTick.on { _, unsubscribe ->
-            if (attempts > maxAttempts) {
-                onFailure()
-                return@on unsubscribe()
-            }
-
-            if (try {entity.onMakeVEntity(level)} catch (e: Throwable) {ELOG(e.stackTraceToString()); false}) {
+        futures.forEach { it.thenAccept {
+            if (!futures.all { it.isDone }) {return@thenAccept}
+            if (futures.all { it.getNow(false) }) {
                 rest()
-                return@on unsubscribe()
+                return@thenAccept
             }
 
-            attempts++
-        }
+            var attempts = 0
+            val maxAttempts = VMConfig.SERVER.CONSTRAINT_CREATION_ATTEMPTS
+
+            SessionEvents.serverOnTick.on { _, unsubscribe ->
+                if (!futures.all { it.isDone }) {return@on}
+                if (futures.all { it.getNow(false) }) {
+                    rest()
+                    unsubscribe()
+                    return@on
+                }
+
+                if (attempts > maxAttempts) {
+                    onFailure()
+                    return@on unsubscribe()
+                }
+
+                futures = entity.onMakeVEntity(level)
+
+                attempts++
+            }
+        } }
     }
 
     //TODO REMEMBER TO FUCKING CALL setDirty()
@@ -260,16 +252,24 @@ open class VEntityManager: SavedData() {
             ELOG("Was not able to create VEntity of type ${entity.getType()} under ID ${entity.mID}")
             callback(null)
         }) {
-            val attachedTo = entity.attachedToShips(dimensionToGroundBodyIdImmutable!!.values)
+            val attachedTo = entity.attachedToShips()
+            var groundVEntity = false
             //if world ventity
             if (attachedTo.size == 1 && attachedTo.contains(-1)) {
                 val groundId = dimensionToId.getOrPut(level.dimensionId) { nextDimensionId-- }
                 shipToVEntity.computeIfAbsent(groundId) { mutableListOf() }.add(entity)
+                groundVEntity = true
             } else {
                 attachedTo.forEach { shipToVEntity.computeIfAbsent(it) { mutableListOf() }.add(entity) }
             }
             idToVEntity[entity.mID] = entity
-            if (entity is Tickable) { tickingVEntities.add(entity) }
+            if (entity is Tickable) {
+                tickingVEntities.add(entity)
+
+                if (!groundVEntity) {
+                    physThreadChanges.add(Tuple.of(entity.dimensionId!!, entity, true))
+                }
+            }
             entity.getAttachmentPoints().forEach {
                 posToMId.getOrPut(entity.dimensionId!!) { PosMapList() }.addItemTo(entity.mID, it.toBlockPos())
                 cposToMId.getOrPut(entity.dimensionId!!) { PosMapList() }.addItemTo(entity.mID, (it.also { it.y = 0.0 } / 16).toBlockPos())
@@ -286,9 +286,11 @@ open class VEntityManager: SavedData() {
     fun removeVEntity(level: ServerLevel, id: VEntityId): Boolean {
         val entity = idToVEntity[id] ?: return false
 
-        val attachedTo = entity.attachedToShips(dimensionToGroundBodyIdImmutable!!.values)
+        val attachedTo = entity.attachedToShips()
+        var groundVEntity = false
         //if world ventity
         if (attachedTo.size == 1 && attachedTo.contains(-1)) {
+            groundVEntity = true
             shipToVEntity[dimensionToId[entity.dimensionId] ?: ""]?.remove(entity)
         } else {
             attachedTo.forEach { (shipToVEntity[it] ?: return@forEach).remove(entity) }
@@ -296,7 +298,13 @@ open class VEntityManager: SavedData() {
 
         entity.onDeleteVEntity(level)
         idToVEntity.remove(id)
-        if (entity is Tickable) { tickingVEntities.remove(entity) }
+        if (entity is Tickable) {
+            tickingVEntities.remove(entity)
+
+            if (!groundVEntity) {
+                physThreadChanges.add(Tuple.of(entity.dimensionId!!, entity, false))
+            }
+        }
         entity.getAttachmentPoints().forEach {
             posToMId.getOrPut(entity.dimensionId!!) { PosMapList() }.removeItemFromPos(entity.mID, it.toBlockPos())
             cposToMId.getOrPut(entity.dimensionId!!) { PosMapList() }.removeItemFromPos(entity.mID, (it.also { it.y = 0.0 } / 16).toBlockPos())
@@ -308,6 +316,8 @@ open class VEntityManager: SavedData() {
 
     fun getAllVEntitiesIdOfId(shipId: ShipId): List<VEntityId> = shipToVEntity[shipId]?.map { it.mID } ?: emptyList()
 
+    fun idHasVEntities(shipId: ShipId): Boolean = shipToVEntity[shipId]?.isNotEmpty() == true
+
     @Internal
     fun makeVEntityWithId(level: ServerLevel, entity: VEntity, id: Int, callback: ((VEntityId?) -> Unit)) {
         if (id == -1) { throw AssertionError("makeVEntityWithId was called without a specific id") }
@@ -317,17 +327,25 @@ open class VEntityManager: SavedData() {
             ELOG("Was not able to create VEntity of type ${entity.getType()} under ID ${entity.mID}")
             callback(null)
         }) {
-            val attachedTo = entity.attachedToShips(dimensionToGroundBodyIdImmutable!!.values)
+            val attachedTo = entity.attachedToShips()
+            var groundVEntity = false
             //if world ventity
             if (attachedTo.size == 1 && attachedTo.contains(-1)) {
                 val groundId = dimensionToId.getOrPut(level.dimensionId) { nextDimensionId-- }
                 shipToVEntity.computeIfAbsent(groundId) { mutableListOf() }.add(entity)
+                groundVEntity = true
             } else {
                 attachedTo.forEach { shipToVEntity.computeIfAbsent(it) { mutableListOf() }.add(entity) }
             }
             if (idToVEntity.contains(entity.mID)) { ELOG("OVERWRITING AN ALREADY EXISTING VEntity IN makeVEntityWithId. SOMETHING PROBABLY WENT WRONG AS THIS SHOULDN'T HAPPEN.") }
             idToVEntity[entity.mID] = entity
-            if (entity is Tickable) { tickingVEntities.add(entity) }
+            if (entity is Tickable) {
+                tickingVEntities.add(entity)
+
+                if (!groundVEntity) {
+                    physThreadChanges.add(Tuple.of(entity.dimensionId!!, entity, true))
+                }
+            }
             entity.getAttachmentPoints().forEach {
                 posToMId.getOrPut(entity.dimensionId!!) { PosMapList() }.addItemTo(entity.mID, it.toBlockPos())
                 cposToMId.getOrPut(entity.dimensionId!!) { PosMapList() }.addItemTo(entity.mID, (it.also { it.y = 0.0 } / 16).toBlockPos())
@@ -343,19 +361,17 @@ open class VEntityManager: SavedData() {
     fun tryGetIdsOfCPosition(dimensionId: DimensionId, x: Int, z: Int): List<VEntityId>? = cposToMId.getOrPut(dimensionId) { PosMapList() }.getItemsAt(x, 0, z)
     fun tryGetIdsOfCPosition(dimensionId: DimensionId, pos: ChunkPos): List<VEntityId>? = cposToMId.getOrPut(dimensionId) { PosMapList() }.getItemsAt(pos.x, 0, pos.z)
 
-    fun disableCollisionBetween(level: ServerLevel, shipId1: ShipId, shipId2: ShipId, callback: (() -> Unit)? = null): Boolean {
-        if (!level.shipObjectWorld.disableCollisionBetweenBodies(shipId1, shipId2)) { return false }
-
+    fun disableCollisionBetween(level: ServerLevel, shipId1: ShipId, shipId2: ShipId, callback: (() -> Unit)? = null): CompletableFuture<Boolean> {
         idToDisabledCollisions.getOrPut(shipId1) { mutableMapOf() }.compute (shipId2) { _, pair-> if (pair == null) { MutablePair(1, mutableListOf(callback)) } else { pair.left++; pair.right.add(callback); pair } }
         idToDisabledCollisions.getOrPut(shipId2) { mutableMapOf() }.compute (shipId1) { _, pair-> if (pair == null) { MutablePair(1, mutableListOf(callback)) } else { pair.left++; pair.right.add(callback); pair } }
-        return true
+        return level.gtpa.disableCollisionBetweenBodies(shipId1, shipId2)
     }
 
     fun enableCollisionBetween(level: ServerLevel, shipId1: ShipId, shipId2: ShipId) {
         val map = idToDisabledCollisions[shipId1]
-        if (map == null) {level.shipObjectWorld.enableCollisionBetweenBodies(shipId1, shipId2); return}
+        if (map == null) {level.gtpa.enableCollisionBetweenBodies(shipId1, shipId2); return}
         val value = map[shipId2]
-        if (value == null) {level.shipObjectWorld.enableCollisionBetweenBodies(shipId1, shipId2); return}
+        if (value == null) {level.gtpa.enableCollisionBetweenBodies(shipId1, shipId2); return}
         value.left--
         if (value.left > 0) {
             idToDisabledCollisions[shipId2]!!.compute(shipId1) {_, pair -> pair!!.left--; pair}
@@ -368,7 +384,7 @@ open class VEntityManager: SavedData() {
         if (map.isEmpty()) { idToDisabledCollisions.remove(shipId1) }
         if (idToDisabledCollisions[shipId2]!!.isEmpty()) { idToDisabledCollisions.remove(shipId2) }
 
-        level.shipObjectWorld.enableCollisionBetweenBodies(shipId1, shipId2)
+        level.gtpa.enableCollisionBetweenBodies(shipId1, shipId2)
 
         value.right?.filterNotNull()?.forEach { it.invoke() }
     }
@@ -377,14 +393,102 @@ open class VEntityManager: SavedData() {
         return idToDisabledCollisions[shipId]?.map { (k, v) -> Pair(k, v.left) }?.toMap()
     }
 
+    fun onBlocksMove(level: ServerLevel, oldShip: ServerShip?, newShip: ServerShip?, oldCenter: Vector3ic, newCenter: Vector3ic, blocks: List<BlockPos>) {
+        val hasVEntities = if (oldShip != null) { idHasVEntities(oldShip.id) } else { true }
+        if (!hasVEntities) {return}
+        val posToMId = posToMId.getOrPut(level.dimensionId) { PosMapList() }
+
+        val oldId = oldShip?.id ?: -1L
+        val newId = newShip?.id ?: -1L
+
+        val veToData = mutableMapOf<Int, Pair<VEntity, MutableMap<BlockPos, MutableList<Vector3d>>>>()
+        val vEntities = getAllVEntitiesIdOfId(oldId).mapNotNull { getVEntity(it) }
+
+        var minPos = BlockPos.MutableBlockPos(Int.MAX_VALUE, Int.MAX_VALUE, Int.MAX_VALUE)
+        var maxPos = BlockPos.MutableBlockPos(Int.MIN_VALUE, Int.MIN_VALUE, Int.MIN_VALUE)
+
+        val movedPositions = mutableSetOf<BlockPos>()
+        blocks.forEach { pos ->
+            if (pos.x < minPos.x) minPos.x = pos.x
+            if (pos.y < minPos.y) minPos.y = pos.y
+            if (pos.z < minPos.z) minPos.z = pos.z
+            if (pos.x > maxPos.x) maxPos.x = pos.x
+            if (pos.y > maxPos.y) maxPos.y = pos.y
+            if (pos.z > maxPos.z) maxPos.z = pos.z
+            movedPositions.add(pos)
+        }
+        // minPos is correct but maxPos needs to be extended by 1 cuz ints
+        // also extending box by 1 cuz i need to capture near points that are not in blocks
+        minPos.setWithOffset(minPos, -1, -1, -1)
+        maxPos.setWithOffset(maxPos, 2, 2, 2)
+
+        val offsets = mutableListOf<Tuple3<Int, Int, Int>>()
+        for (y in -1 .. 1)
+        for (x in -1 .. 1)
+        for (z in -1 .. 1) {
+            if (x == 0 && y == 0 && z == 0) continue
+            offsets.add(Tuple.of(x, y, z))
+        }
+
+        vEntities.forEach { ve ->
+            ve.getAttachmentPoints(oldId).forEach { pos ->
+                if (   pos.x < minPos.x
+                    || pos.y < minPos.y
+                    || pos.z < minPos.z
+                    || pos.x > maxPos.x
+                    || pos.y > maxPos.y
+                    || pos.z > maxPos.z
+                ) return@forEach
+
+                val bPos = pos.toBlockPos()
+                if (movedPositions.contains(bPos)) {
+                    veToData.getOrPut(ve.mID) { Pair(ve, mutableMapOf()) }
+                            .second.getOrPut(bPos) { mutableListOf() }
+                            .add(pos)
+                    return@forEach
+                }
+
+                for ((x, y, z) in offsets) {
+                    val off = bPos.offset(x, y, z)
+                    if (!movedPositions.contains(off)) continue
+                    if (   off.x.toDouble() - 0.001 < pos.x
+                        && off.y.toDouble() - 0.001 < pos.y
+                        && off.z.toDouble() - 0.001 < pos.z
+                        && off.x.toDouble() + 1.001 > pos.x
+                        && off.y.toDouble() + 1.001 > pos.y
+                        && off.z.toDouble() + 1.001 > pos.z
+                    ) {
+                        veToData.getOrPut(ve.mID) { Pair(ve, mutableMapOf()) }
+                                .second.getOrPut(off) { mutableListOf() }
+                                .add(pos)
+                        break
+                    }
+                }
+            }
+        }
+
+        veToData.forEach { id, pair ->
+            val (vEntity, data) = pair
+            val pointsToMove = data.map { (_, positions) -> positions }.flatten()
+
+            vEntity.attachedToShips().forEach { shipToVEntity[it]?.remove(vEntity) }
+            vEntity.getAttachmentPoints(oldId).forEach { posToMId.removeItemFromPos(id, it.toBlockPos()) }
+
+            val res = vEntity.moveAttachmentPoints(level, pointsToMove, oldId, newId, Vector3d(oldCenter), Vector3d(newCenter))
+
+            if (res) {
+                vEntity.attachedToShips().forEach { shipToVEntity.getOrPut(it) { mutableListOf() }.add(vEntity) }
+                vEntity.getAttachmentPoints(newId).forEach { posToMId.addItemTo(id, it.toBlockPos()) }
+            }
+        }
+
+        setDirty()
+    }
+
     companion object {
         private var instance: VEntityManager? = null
         private var level: ServerLevel? = null
 
-        // SavedData is saved after VSPhysicsPipelineStage is deleted, so getting allShips and
-        // dimensionToGroundBodyIdImmutable from level.shipObjectWorld is impossible, unless you get it's reference
-        // before it got deleted
-        var dimensionToGroundBodyIdImmutable: Map<DimensionId, ShipId>? = null
         var allShips: QueryableShipData<Ship>? = null
 
         init {
@@ -404,7 +508,6 @@ open class VEntityManager: SavedData() {
         fun close() {
             instance = null
             level = null
-            dimensionToGroundBodyIdImmutable = null
             allShips = null
         }
 
@@ -419,7 +522,6 @@ open class VEntityManager: SavedData() {
         fun initNewInstance(): VEntityManager {
             level = ServerObjectsHolder.overworldServerLevel!!
 
-            dimensionToGroundBodyIdImmutable = level!!.shipObjectWorld.dimensionToGroundBodyIdImmutable
             allShips = level!!.shipObjectWorld.allShips
 
             instance = ServerObjectsHolder.overworldServerLevel!!.dataStorage.computeIfAbsent(Companion::load, Companion::create, VM.MOD_ID)
@@ -456,13 +558,64 @@ open class VEntityManager: SavedData() {
                 getInstance()
                 if (instance!!.tickingVEntities.isEmpty()) {return@register}
 
-                val toRemove = mutableListOf<Tickable>()
-                instance!!.tickingVEntities.forEach {
-                    it.tick(server) {toRemove.add(it)}
+                val unloadedShips = mutableSetOf<ShipId>()
+                val loadedShips = mutableSetOf<ShipId>()
+
+                val toUnload = mutableListOf<VEntity>()
+                val ticking = instance!!.tickingVEntities.filter { ve ->
+                    if (ve.alwaysTick) return@filter true
+
+                    ve as VEntity
+                    val shipIds = ve.attachedToShips()
+                    if (shipIds.any {unloadedShips.contains(it)}) {return@filter false}
+
+                    shipIds.forEach {
+                        if (loadedShips.contains(it)) {return@forEach}
+
+                        val ship = level!!.shipObjectWorld.allShips.getById(it) ?: return@forEach
+                        val b = ship.shipAABB ?: return@forEach
+                        val pos = BlockPos(
+                            ((b.maxX() - b.minX()) / 2.0 + b.minX()).toInt(),
+                            ((b.maxY() - b.minY()) / 2.0 + b.minY()).toInt(),
+                            ((b.maxZ() - b.minZ()) / 2.0 + b.minZ()).toInt(),
+                        )
+
+                        if (level!!.isLoaded(pos)) {
+                            loadedShips.add(it)
+                            return@forEach
+                        }
+                        unloadedShips.add(it)
+                        toUnload.add(ve)
+                        return@filter false
+                    }
+
+                    true
                 }
+
+                //TODO there was a concurrent modification somewhere here
+                val toRemove = mutableListOf<Tickable>()
+                ticking.forEach { it.serverTick(server) { toRemove.add(it) } }
                 instance!!.tickingVEntities.removeAll(toRemove)
+                instance!!.physThreadChanges.addAll(toRemove.map { it as VEntity; Tuple.of(it.dimensionId!!, it, false) })
+                instance!!.physThreadChanges.addAll(toUnload.map { Tuple.of(it.dimensionId!!, it, false) })
+                instance!!.physThreadChanges.addAll(ticking .map { it as VEntity; Tuple.of(it.dimensionId!!, it, true) })
                 setDirty()
             }
+
+            vsApi.physTickEvent.on { event ->
+                val instance = instance ?: return@on
+                instance.physThreadChanges.pollUntilEmpty { (dimension, ventity, add) -> ventity as Tickable
+                    val map = instance.physThreadTickable.getOrPut(dimension) { mutableMapOf() }
+                    if (add) { map[ventity.mID] = ventity } else { map.remove(ventity.mID) }
+                }
+                instance.physThreadTickable[event.world.dimension]?.forEach {k, ve -> ve.physTick(event.world as VsiPhysLevel, event.delta) }
+            }
+
+            //TODO
+//            AVSEvents.blocksWereMovedEvent.on {
+//                it, handler ->
+//                instance?.onBlocksMove(it.level, it.originalShip, it.newShip, it.oldCenter, it.newCenter, it.blocks)
+//            }
         }
     }
 }

@@ -59,7 +59,7 @@ class DimensionalGravitySettings: ServerSettingsGUIBuilder {
         class S2CSendGravityVectors(): Serializable {
             override fun serialize(): FriendlyByteBuf {
                 val buf = getBuffer()
-                buf.writeCollection(VSGravityManager.gravities.toList()) { buf, it -> buf.writeUtf(it.first); buf.writeVector3d(it.second)}
+                buf.writeCollection(VSGravityManager.gravities.toList()) { buf, it -> buf.writeUtf(it.first); buf.writeVector3d(Vector3d(it.second.gravity))}
                 return buf
             }
 

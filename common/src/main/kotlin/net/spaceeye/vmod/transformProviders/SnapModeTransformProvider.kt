@@ -7,7 +7,8 @@ import net.spaceeye.vmod.toolgun.modes.util.getModePosition
 import net.spaceeye.vmod.utils.*
 import net.spaceeye.vmod.utils.vs.posShipToWorldRender
 import org.joml.Quaterniond
-import net.spaceeye.vmod.compat.vsBackwardsCompat.*
+import org.valkyrienskies.core.api.VsBeta
+import org.valkyrienskies.core.api.bodies.properties.rebuild
 import org.valkyrienskies.core.api.ships.ClientShip
 import org.valkyrienskies.core.api.ships.ClientShipTransformProvider
 import org.valkyrienskies.core.api.ships.properties.ShipTransform
@@ -55,7 +56,7 @@ class SnapModeTransformProvider(
         if (firstResult.globalNormalDirection == null || secondResult.worldNormalDirection == null) { return null }
         // not sure why i need to flip y, but it works
         gdir1 = firstResult .globalNormalDirection!!.let {it.copy().also{it.set(it.x, -it.y, it.z)}}
-        gdir2 = secondResult.globalNormalDirection!!
+        gdir2 = secondResult.globalNormalDirection!!.copy()
 
         if (secondResult.state.isAir) {return null}
 

@@ -16,8 +16,8 @@ import net.spaceeye.vmod.reflectable.AutoSerializable
 import net.spaceeye.vmod.utils.*
 import net.spaceeye.vmod.rendering.types.*
 import org.valkyrienskies.core.api.ships.properties.ShipId
-import org.valkyrienskies.core.apigame.world.properties.DimensionId
-import org.valkyrienskies.core.impl.hooks.VSEvents
+import org.valkyrienskies.core.api.world.properties.DimensionId
+import org.valkyrienskies.mod.api.vsApi
 import org.valkyrienskies.mod.common.shipObjectWorld
 import java.util.*
 
@@ -102,7 +102,6 @@ class ServerSynchronisedRenderingData:
     internal val worldRenderingData = ServerWorldSynchronisedRenderingData()
 
     private var idToPages = mutableMapOf<Int, Set<Long>>()
-    private val groundIds: Collection<Long> get() = ServerObjectsHolder.overworldServerLevel!!.shipObjectWorld.dimensionToGroundBodyIdImmutable.values
 
     fun setUpdated(id: Int, renderer: BaseRenderer): Boolean = lock {
         val pages = idToPages[id] ?: return@lock false
@@ -115,7 +114,7 @@ class ServerSynchronisedRenderingData:
     }
 
     fun setRenderer(shipIds: List<ShipId>, id: Int, renderer: BaseRenderer): Int = lock {
-        val idsToUse = shipIds.filter { !groundIds.contains(it) }.also { if (it.isEmpty()) {
+        val idsToUse = shipIds.filter { it != -1L }.also { if (it.isEmpty()) {
             if (renderer !is PositionDependentRenderer) throw RuntimeException("World Renderers should implement PositionDependentRenderer")
             worldRenderingData.setRenderer(id, renderer) ?: return id
             idToPages[id] = setOf(ReservedRenderingPages.WorldRenderingObject)
@@ -127,7 +126,7 @@ class ServerSynchronisedRenderingData:
     }
 
     fun addRenderer(shipIds: List<ShipId>, renderer: BaseRenderer, dimensionId: DimensionId? = null): Int = lock {
-        val idsToUse = shipIds.filter { !groundIds.contains(it) }.also { if (it.isEmpty() || (it.size == 1 && it.contains(-1L))) {
+        val idsToUse = shipIds.filter { it != -1L }.also { if (it.isEmpty() || (it.size == 1 && it.contains(-1L))) {
             if (renderer !is PositionDependentRenderer) throw RuntimeException("World Renderers should implement PositionDependentRenderer")
             if (dimensionId == null) throw RuntimeException("World Renderers need non-null dimensionId")
             val id = worldRenderingData.addRenderer(dimensionId, renderer)
@@ -198,14 +197,14 @@ private object SynchronisedRenderingData {
 
     private fun makeClientEvents() {
         EnvExecutor.runInEnv(EnvType.CLIENT) { Runnable {
-            VSEvents.shipLoadEventClient.on { (ship) ->
+            vsApi.shipLoadEventClient.on { event -> val ship = event.ship
                 clientSynchronisedData.subscribeToPageUpdates(ship.id)
             }
-            AVSEvents.clientShipUnloadEvent.on { (ship), _ ->
-                clientSynchronisedData.unsubscribeFromPageUpdates(ship?.id ?: return@on)
+            vsApi.shipUnloadEventClient.on { event, _ -> val ship = event.ship
+                clientSynchronisedData.unsubscribeFromPageUpdates(ship.id)
             }
 
-            AVSEvents.clientPhysEntityLoad.on { (data), _ ->
+            AVSEvents.clientPhysEntityLoad.on { data, _ ->
                 clientSynchronisedData.subscribeToPageUpdates(data.id)
             }
             AVSEvents.clientPhysEntityUnload.on { id, _ ->

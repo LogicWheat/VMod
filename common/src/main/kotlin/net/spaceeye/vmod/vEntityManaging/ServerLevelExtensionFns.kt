@@ -5,6 +5,7 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.level.ChunkPos
 import org.jetbrains.annotations.ApiStatus.Internal
 import org.valkyrienskies.core.api.ships.properties.ShipId
+import org.valkyrienskies.core.api.world.properties.DimensionId
 import org.valkyrienskies.mod.common.dimensionId
 
 fun ServerLevel.makeVEntity(ventity: VEntity, callback: ((VEntityId?) -> Unit) = {}) = VEntityManager.getInstance().makeVEntity(this, ventity, callback)

@@ -20,6 +20,8 @@ import net.spaceeye.valkyrien_ship_schematics.interfaces.v1.IShipSchematicDataV1
 import net.spaceeye.valkyrien_ship_schematics.interfaces.v1.SchemSerializeDataV1Impl
 import net.spaceeye.vmod.ELOG
 import net.spaceeye.vmod.VM
+import net.spaceeye.vmod.schematic.SchematicActionsQueue.CopySchematicSettings
+import net.spaceeye.vmod.schematic.SchematicActionsQueue.PasteSchematicSettings
 import net.spaceeye.vmod.VMConfig
 import net.spaceeye.vmod.WLOG
 import net.spaceeye.vmod.toolgun.SELOG
@@ -31,19 +33,17 @@ import org.joml.Vector3d
 import org.joml.Vector3i
 import org.joml.primitives.AABBd
 import org.joml.primitives.AABBi
-import net.spaceeye.vmod.compat.vsBackwardsCompat.*
-import net.spaceeye.vmod.schematic.SchematicActionsQueue.CopySchematicSettings
-import net.spaceeye.vmod.schematic.SchematicActionsQueue.PasteSchematicSettings
-import net.spaceeye.vmod.shipAttachments.AttachmentAccessor
 import net.spaceeye.vmod.toolgun.VMToolgun
 import net.spaceeye.vmod.translate.makeFake
 import net.spaceeye.vmod.utils.vs.posShipToWorld
 import net.spaceeye.vmod.utils.vs.transformDirectionShipToWorld
+import org.valkyrienskies.core.api.VsBeta
+import org.valkyrienskies.core.api.bodies.properties.BodyTransform
 import org.valkyrienskies.core.api.ships.ServerShip
 import org.valkyrienskies.core.api.ships.properties.ShipId
 import org.valkyrienskies.core.impl.game.ShipTeleportDataImpl
-import org.valkyrienskies.core.impl.game.ships.ShipTransformImpl
 import org.valkyrienskies.core.util.toAABBd
+import org.valkyrienskies.mod.api.vsApi
 import org.valkyrienskies.mod.common.dimensionId
 import org.valkyrienskies.mod.common.shipObjectWorld
 import java.util.UUID
@@ -190,7 +190,8 @@ private class AttachmentsSerializable(): ISerializable {
 private fun IShipSchematicDataV1.saveAttachments(ships: List<ServerShip>, level: ServerLevel, centerPositions: Map<Long, Vector3d>) {
     val attachments = ships
         .mapNotNull { level.shipObjectWorld.loadedShips.getById(it.id) }
-        .map { ship -> Pair(ship, AttachmentAccessor.getOrCreate(ship).forceInducers
+        .map { ship ->
+            Pair(ship, ship.getAllAttachments()
             .filterIsInstance<ICopyableForcesInducer>()
             .mapNotNull { ship.getAttachment(it.javaClass) }
             .toMutableList()
@@ -232,9 +233,8 @@ private fun loadAttachments(level: ServerLevel, ships: Map<Long, ServerShip>, ce
         val loadedShip = level.shipObjectWorld.loadedShips.getById(ships[oldId]!!.id) ?: return@forEach
         attachments.forEach {
             if (it == null) return@forEach
-            //TODO remove this after 2.5.0. for some god forsaken reason VS allows you to add multiple separate attachments to one ship
-            loadedShip.saveAttachment(it.javaClass, null)
-            loadedShip.saveAttachment(it.javaClass, it)
+            loadedShip.removeAttachment(it.javaClass)
+            loadedShip.setAttachment(it)
             it.onPaste({level}, loadedShip, ships, centerPositions)
         }
     }
@@ -245,11 +245,12 @@ private fun IShipSchematic.createShipConstructors(level: ServerLevel, rotation: 
 
     return shipData.map { Pair({
         val newRot = rotation.mul(it.rotation, Quaterniond())
-        val newTransform = ShipTransformImpl(
+
+        val newTransform = vsApi.newBodyTransform(
             rotation.transform(it.relPositionToCenter.get(Vector3d())),
-            it.previousCenterPosition,
             newRot,
-            JVector3d(it.shipScale, it.shipScale, it.shipScale)
+            JVector3d(it.shipScale, it.shipScale, it.shipScale),
+            it.previousCenterPosition
         )
 
         newTransforms.add(newTransform)

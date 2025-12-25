@@ -227,7 +227,7 @@ class VEntityChanger: ExtendableToolgunMode(), VEntityChangerHUD, VEntityChanger
                     Pair(VEntityTypes
                         .strTypeToSupplier(type)
                         .get()
-                        .nbtDeserialize(data.tag!!, mapOf()), rID)
+                        .nbtDeserialize(data.tag!!), rID)
                 }
             }
         }
@@ -254,7 +254,7 @@ class VEntityChanger: ExtendableToolgunMode(), VEntityChangerHUD, VEntityChanger
                 ventity = VEntityTypes
                     .strTypeToSupplier(type)
                     .get()
-                    .nbtDeserialize(data.tag!!, mapOf())!!
+                    .nbtDeserialize(data.tag!!)!!
             }
         }
         val c2sSendUpdate = regC2S<C2SSendUpdate>(MOD_ID, "send_update", "ventity_changer",

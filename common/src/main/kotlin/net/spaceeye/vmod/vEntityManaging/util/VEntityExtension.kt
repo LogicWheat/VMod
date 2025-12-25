@@ -15,7 +15,7 @@ interface TickableVEntityExtension: VEntityExtension {
 interface VEntityExtension {
     fun onInit(obj: ExtendableVEntity)
 
-    fun onAfterMoveShipyardPositions(level: ServerLevel, previous: BlockPos, new: BlockPos, newShipId: ShipId) {TODO()}
+    fun onAfterMoveAttachmentPoints(level: ServerLevel, pointsToMove: List<Vector3d>, oldShipId: ShipId, newShipId: ShipId, oldCenter: Vector3d, newCenter: Vector3d) {TODO()}
 
     fun onBeforeCopyVEntity(level: ServerLevel, mapped: Map<ShipId, ShipId>, centerPositions: Map<ShipId, Pair<Vector3d, Vector3d>>) {}
     //should add new extension to new VEntity
@@ -29,7 +29,7 @@ interface VEntityExtension {
     // will be called after VEntity is deserialized
     // if returns true then everything is ok
     // if returns false then it failed to deserialize and extension will not be added
-    fun onDeserialize(tag: CompoundTag, lastDimensionIds: Map<ShipId, String>): Boolean
+    fun onDeserialize(tag: CompoundTag): Boolean
 
     fun onMakeVEntity(level: ServerLevel)
     fun onDeleteVEntity(level: ServerLevel)

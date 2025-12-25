@@ -9,11 +9,9 @@ import net.spaceeye.valkyrien_ship_schematics.interfaces.ISchematicEvent
 import net.spaceeye.valkyrien_ship_schematics.interfaces.ISerializable
 import net.spaceeye.vmod.utils.JVector3d
 import net.spaceeye.vmod.utils.Vector3d
-import net.spaceeye.vmod.vEntityManaging.VEntityManager.Companion.dimensionToGroundBodyIdImmutable
 import net.spaceeye.vmod.vEntityManaging.VEntityManager.Companion.getInstance
 import org.valkyrienskies.core.api.ships.ServerShip
 import org.valkyrienskies.core.api.ships.properties.ShipId
-import org.valkyrienskies.mod.common.shipObjectWorld
 import java.util.function.Supplier
 
 class VModVEntityManagerCopyPasteEvents: ISchematicEvent {
@@ -30,8 +28,7 @@ class VModVEntityManagerCopyPasteEvents: ISchematicEvent {
         val vEntitiesToSave = toSave.mapNotNull { instance.shipToVEntity[it.id] }.flatten().toSet()
         val tag = CompoundTag()
         tag.put(SAVE_TAG_NAME_STRING, ListTag().also { tag ->
-            vEntitiesToSave.forEach { instance.saveVEntityToList(it, dimensionToGroundBodyIdImmutable!!.values, tag) } })
-        instance.saveDimensionIds(tag)
+            vEntitiesToSave.forEach { instance.saveVEntityToList(it, tag) } })
 
         return CompoundTagSerializable(tag)
     }
@@ -55,8 +52,7 @@ class VModVEntityManagerCopyPasteEvents: ISchematicEvent {
         val instance = getInstance()
 
         val tag = CompoundTagSerializable(CompoundTag()).also { it.deserialize(data.get()) }.tag!!
-        val lastDimensionIds = instance.loadDimensionIds(tag)
-        val toInitVEntities = (tag[SAVE_TAG_NAME_STRING] as ListTag).mapNotNull { instance.loadVEntityFromTag(it as CompoundTag, lastDimensionIds) }
+        val toInitVEntities = (tag[SAVE_TAG_NAME_STRING] as ListTag).mapNotNull { instance.loadVEntityFromTag(it as CompoundTag) }
 
         val mapped = loadedShips.map { Pair(it.key, it.value.id) }.toMap()
 

@@ -35,7 +35,6 @@ internal class LoadingGroup(
         if (neededShipIds.isEmpty()) {
             applyVEntities()
             vEntitiesToLoad.clear()
-            shipRefs.clear()
         }
     }
 
@@ -52,6 +51,7 @@ internal class LoadingGroup(
 
                 shipDataStatus.remove(ship.id)
             }
+            shipRefs.clear()
         }
 
         var numToLoad = vEntitiesToLoad.size

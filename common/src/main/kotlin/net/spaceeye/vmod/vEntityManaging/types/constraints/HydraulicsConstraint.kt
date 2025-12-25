@@ -4,8 +4,8 @@ import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerLevel
 import net.spaceeye.vmod.vEntityManaging.*
 import net.spaceeye.vmod.vEntityManaging.util.*
-import net.spaceeye.vmod.reflectable.TagSerializableItem
 import net.spaceeye.vmod.utils.*
+import net.spaceeye.vmod.utils.vs.copy
 import org.valkyrienskies.core.api.ships.properties.ShipId
 import kotlin.math.abs
 import kotlin.math.min
@@ -13,9 +13,13 @@ import kotlin.math.sign
 import net.spaceeye.vmod.utils.vs.tryMovePosition
 import org.joml.Quaterniond
 import org.joml.Quaterniondc
-import org.valkyrienskies.core.apigame.constraints.VSAttachmentConstraint
-import org.valkyrienskies.core.apigame.constraints.VSFixedOrientationConstraint
-import org.valkyrienskies.core.apigame.constraints.VSHingeOrientationConstraint
+import org.valkyrienskies.core.internal.joints.VSDistanceJoint
+import org.valkyrienskies.core.internal.joints.VSFixedJoint
+import org.valkyrienskies.core.internal.joints.VSJoint
+import org.valkyrienskies.core.internal.joints.VSJointMaxForceTorque
+import org.valkyrienskies.core.internal.joints.VSJointPose
+import org.valkyrienskies.core.internal.joints.VSRevoluteJoint
+import org.valkyrienskies.core.internal.world.VsiPhysLevel
 
 class HydraulicsConstraint(): TwoShipsMConstraint(), VEAutoSerializable, Tickable {
     //TODO unify and rename values (needs backwards compat)
@@ -50,6 +54,10 @@ class HydraulicsConstraint(): TwoShipsMConstraint(), VEAutoSerializable, Tickabl
     var maxForce: Float by get(i++, -1f)
     var stiffness: Float by get(i++, 0f)
     var damping: Float by get(i++, 0f)
+    val compliance: Double by get(i++, 1e-100)
+
+    var d1: VSJoint? = null
+    var d2: VSJoint? = null
 
     constructor(
         sPos1: Vector3d,
@@ -90,8 +98,7 @@ class HydraulicsConstraint(): TwoShipsMConstraint(), VEAutoSerializable, Tickabl
 
         this.minLength = minLength
         this.maxLength = maxLength
-        // extensionSpeed is in seconds. Constraint is being updated every mc tick
-        this.extensionSpeed = extensionSpeed / 20f
+        this.extensionSpeed = extensionSpeed
 
         this.channel = channel
         this.connectionMode = connectionMode
@@ -109,7 +116,7 @@ class HydraulicsConstraint(): TwoShipsMConstraint(), VEAutoSerializable, Tickabl
             mapped[shipId1] ?: return null,
             mapped[shipId2] ?: return null,
             maxForce, stiffness, damping,
-            minLength, maxLength, extensionSpeed * 20f, channel, connectionMode
+            minLength, maxLength, extensionSpeed, channel, connectionMode
         )
     }
 
@@ -123,8 +130,7 @@ class HydraulicsConstraint(): TwoShipsMConstraint(), VEAutoSerializable, Tickabl
         sDir1.divAssign(scaleBy)
         sDir2.divAssign(scaleBy)
 
-        super.iOnDeleteVEntity(level)
-        iOnMakeVEntity(level)
+        lastExtended = -1.0f
     }
 
     var wasDeleted = false
@@ -137,35 +143,70 @@ class HydraulicsConstraint(): TwoShipsMConstraint(), VEAutoSerializable, Tickabl
         val currentPercentage = extendedDist / length
         if (abs(currentPercentage - targetPercentage) < 1e-6) { return false }
         val left = targetPercentage - currentPercentage
-        val percentageStep = extensionSpeed / length
+        // 60 phys ticks in a second
+        val percentageStep = extensionSpeed / 60f / length
         extendedDist += min(percentageStep, abs(left)) * length * left.sign
         return true
     }
 
-    override fun tick(server: MinecraftServer, unregister: () -> Unit) {
+    override fun serverTick(server: MinecraftServer, unregister: () -> Unit) {
         if (wasDeleted) {
             unregister()
             return
         }
         getExtensionsOfType<TickableVEntityExtension>().forEach { it.tick(server) }
+    }
+
+    override fun physTick(level: VsiPhysLevel, delta: Double) {
+        if (cIDs.isEmpty()) {return}
         if (!tryExtendDist()) {return}
 
         if (lastExtended == extendedDist) {return}
         lastExtended = extendedDist
 
-        super.iOnDeleteVEntity(server.overworld())
-        iOnMakeVEntity(server.overworld())
-    }
-
-    override fun iOnMakeVEntity(level: ServerLevel): Boolean {
-        val maxForce = if (maxForce < 0) { Float.MAX_VALUE.toDouble() } else { maxForce.toDouble() }
-        val compliance = if (stiffness <= 0f) { Float.MIN_VALUE.toDouble() } else { (1f / stiffness).toDouble() }
-        val distance = (minLength + extendedDist).toDouble()
+        val (sPos1, sPos2, sDir1, sDir2) = when (-1L) {
+            shipId1 -> Tuple.of(sPos1 + 0.5, sPos2,  sDir1, sDir2)
+            shipId2 -> Tuple.of(sPos2 + 0.5, sPos1, -sDir2, sDir1)
+            else    -> Tuple.of(sPos1      , sPos2,  sDir1, sDir2)
+        }
+        val distance = (minLength + extendedDist)
+        val p11 = sPos1.toJomlVector3d()
+        val p21 = (sPos2 - sDir2 * distance).toJomlVector3d()
+        val p12 = (sPos1 + sDir1 * distance).toJomlVector3d()
+        val p22 = sPos2.toJomlVector3d()
 
         if (connectionMode == ConnectionMode.FREE_ORIENTATION) {
-            val c1 = VSAttachmentConstraint(shipId1, shipId2, compliance, sPos1.toJomlVector3d(), sPos2.toJomlVector3d(), maxForce, distance.toDouble())
-            mc(c1, cIDs, level) { return false }
-            return true
+            d1 = (d1 as VSDistanceJoint).copy(minDistance = 0f, maxDistance = distance)
+            level.updateJoint(cIDs[0], d1!!)
+        } else {
+            d1 = d1!!.copy(null, p11, null, null, p21, null)
+            d2 = d2!!.copy(null, p12, null, null, p22, null)
+            level.updateJoint(cIDs[0], d1!!)
+            level.updateJoint(cIDs[1], d2!!)
+        }
+    }
+
+    override fun iOnMakeVEntity(level: ServerLevel) = withFutures {
+        if (shipId1 == -1L && shipId2 == -1L) {throw AssertionError("Both shipId's are ground")}
+        val (shipId1, shipId2, sPos1, sPos2, sDir1, sDir2, sRot1, sRot2) = when (-1L) {
+            shipId1 -> Tuple.of(null   , shipId2, sPos1 + 0.5, sPos2,  sDir1, sDir2, sRot1, sRot2)
+            shipId2 -> Tuple.of(null   , shipId1, sPos2 + 0.5, sPos1, -sDir2, sDir1, sRot2, sRot1)
+            else    -> Tuple.of(shipId1, shipId2, sPos1      , sPos2,  sDir1, sDir2, sRot1, sRot2)
+        }
+
+        val maxForceTorque = if (maxForce < 0) {null} else {VSJointMaxForceTorque(maxForce, maxForce)}
+        val stiffness = if (stiffness < 0) {null} else {stiffness}
+        val damping = if (damping < 0) {null} else {damping}
+        val distance = (minLength + extendedDist)
+
+        if (connectionMode == ConnectionMode.FREE_ORIENTATION) {
+            d1 = VSDistanceJoint(
+                shipId1, VSJointPose(sPos1.toJomlVector3d(), Quaterniond()),
+                shipId2, VSJointPose(sPos2.toJomlVector3d(), Quaterniond()),
+                maxForceTorque, compliance, distance, distance, stiffness = stiffness, damping = damping
+            )
+            mc(d1!!, level)
+            return@withFutures
         }
 
         val p11 = sPos1.toJomlVector3d()
@@ -173,20 +214,52 @@ class HydraulicsConstraint(): TwoShipsMConstraint(), VEAutoSerializable, Tickabl
         val p12 = (sPos1 + sDir1 * distance).toJomlVector3d()
         val p22 = sPos2.toJomlVector3d()
 
-        val a1 = VSAttachmentConstraint(shipId1, shipId2, compliance, p11, p21, maxForce, 0.0)
-        val a2 = VSAttachmentConstraint(shipId1, shipId2, compliance, p12, p22, maxForce, 0.0)
+        when (connectionMode) {
+            ConnectionMode.FIXED_ORIENTATION -> {
+                d1 = VSFixedJoint(
+                    shipId1, VSJointPose(p11, sRot1.invert(Quaterniond())),
+                    shipId2, VSJointPose(p21, sRot2.invert(Quaterniond())),
+                    maxForceTorque, compliance
+                )
+                d2 = VSFixedJoint(
+                    shipId1, VSJointPose(p12, sRot1.invert(Quaterniond())),
+                    shipId2, VSJointPose(p22, sRot2.invert(Quaterniond())),
+                    maxForceTorque, compliance
+                )
 
-        mc(a1, cIDs, level) {return false}
-        mc(a2, cIDs, level) {return false}
+                mc(d1!!, level)
+                mc(d2!!, level)
+            }
+            ConnectionMode.HINGE_ORIENTATION -> {
+                d1 = VSDistanceJoint(
+                    shipId1, VSJointPose(p11, Quaterniond()),
+                    shipId2, VSJointPose(p21, Quaterniond()),
+                    maxForceTorque, compliance, 0f, 0f, stiffness = stiffness, damping = damping
+                )
+                d2 = VSDistanceJoint(
+                    shipId1, VSJointPose(p12, Quaterniond()),
+                    shipId2, VSJointPose(p22, Quaterniond()),
+                    maxForceTorque, compliance, 0f, 0f, stiffness = stiffness, damping = damping
+                )
 
-        val r1 = when (connectionMode) {
-            ConnectionMode.FIXED_ORIENTATION -> VSFixedOrientationConstraint(shipId1, shipId2, compliance, sRot1.invert(Quaterniond()), sRot2.invert(Quaterniond()), maxForce)
-            ConnectionMode.HINGE_ORIENTATION -> VSHingeOrientationConstraint(shipId1, shipId2, compliance, getHingeRotation(sDir1), getHingeRotation(sDir2), maxForce)
-            else -> throw AssertionError("Impossible")
+                val r1 = VSRevoluteJoint(
+                    shipId1, VSJointPose(p11, getHingeRotation(sDir1)),
+                    shipId2, VSJointPose(p21, getHingeRotation(sDir2)),
+                    maxForceTorque, compliance, driveFreeSpin = true
+                )
+                val r2 = VSRevoluteJoint(
+                    shipId1, VSJointPose(p12, getHingeRotation(sDir1)),
+                    shipId2, VSJointPose(p22, getHingeRotation(sDir2)),
+                    maxForceTorque, compliance, driveFreeSpin = true
+                )
+
+                mc(d1!!, level)
+                mc(d2!!, level)
+                mc(r1, level)
+                mc(r2, level)
+            }
+            ConnectionMode.FREE_ORIENTATION -> throw AssertionError()
         }
-        mc(r1, cIDs, level) {return false}
-
-        return true
     }
 
     override fun iOnDeleteVEntity(level: ServerLevel) {

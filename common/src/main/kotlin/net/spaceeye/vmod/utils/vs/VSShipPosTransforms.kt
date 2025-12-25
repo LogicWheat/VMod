@@ -1,7 +1,7 @@
 package net.spaceeye.vmod.utils.vs
 
 import net.spaceeye.vmod.utils.Vector3d
-import net.spaceeye.vmod.compat.vsBackwardsCompat.*
+import org.valkyrienskies.core.api.bodies.properties.BodyTransform
 import org.valkyrienskies.core.api.ships.ClientShip
 import org.valkyrienskies.core.api.ships.Ship
 import org.valkyrienskies.core.api.ships.properties.ShipTransform
@@ -15,8 +15,8 @@ fun posWorldToShipRender(ship: ClientShip?, pos: Vector3d, transform: BodyTransf
 fun transformDirectionShipToWorld(ship: Ship, dir: Vector3d): Vector3d = Vector3d(ship.transform.shipToWorld.transformDirection(dir.toJomlVector3d(), org.joml.Vector3d()))
 fun transformDirectionWorldToShip(ship: Ship, dir: Vector3d): Vector3d = Vector3d(ship.transform.worldToShip.transformDirection(dir.toJomlVector3d(), org.joml.Vector3d()))
 
-fun transformDirectionShipToWorld(transform: ShipTransform, dir: Vector3d): Vector3d = Vector3d(transform.shipToWorld.transformDirection(dir.toJomlVector3d(), org.joml.Vector3d()))
-fun transformDirectionWorldToShip(transform: ShipTransform, dir: Vector3d): Vector3d = Vector3d(transform.worldToShip.transformDirection(dir.toJomlVector3d(), org.joml.Vector3d()))
+fun transformDirectionShipToWorld(transform: BodyTransform, dir: Vector3d): Vector3d = Vector3d(transform.toModel.transformDirection(dir.toJomlVector3d(), org.joml.Vector3d()))
+fun transformDirectionWorldToShip(transform: BodyTransform, dir: Vector3d): Vector3d = Vector3d(transform.toWorld.transformDirection(dir.toJomlVector3d(), org.joml.Vector3d()))
 
 fun transformDirectionShipToWorldRender(ship: ClientShip, dir: Vector3d): Vector3d = Vector3d(ship.renderTransform.shipToWorld.transformDirection(dir.toJomlVector3d(), org.joml.Vector3d()))
 fun transformDirectionWorldToShipRender(ship: ClientShip, dir: Vector3d): Vector3d = Vector3d(ship.renderTransform.worldToShip.transformDirection(dir.toJomlVector3d(), org.joml.Vector3d()))

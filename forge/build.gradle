@@ -86,15 +86,10 @@ dependencies {
     shadowCommon(project(path: ":common", configuration: "transformProductionForge")) { transitive = false }
 
     modApi("org.valkyrienskies:valkyrienskies-120-forge:${rootProject.vs2_version}") { transitive = false }
-    api("org.valkyrienskies.core:api:${rootProject.vs_core_version}") { transitive = false }
-    api("org.valkyrienskies.core:api-game:${rootProject.vs_core_version}") { transitive = false }
-    api("org.valkyrienskies.core:util:${rootProject.vs_core_version}") { transitive = false }
-    api("org.valkyrienskies.core:impl:${rootProject.vs_core_version}") { transitive = false }
-
-//    forgeRuntimeLibrary modImplementation("gg.essential:elementa:${rootProject.elementaVersion}") {transitive = false}
-//    forgeRuntimeLibrary modImplementation("gg.essential:universalcraft-1.20.1-forge:${rootProject.ucVersion}") {transitive = false}
-
-//    modImplementation("curse.maven:essential-mod-546670:6828668")
+    compileOnly("org.valkyrienskies.core:api:${rootProject.vs_core_version}") { transitive = false }
+    compileOnly("org.valkyrienskies.core:internal:${rootProject.vs_core_version}") { transitive = false }
+    compileOnly("org.valkyrienskies.core:util:${rootProject.vs_core_version}") { transitive = false }
+    compileOnly("org.valkyrienskies.core:impl:${rootProject.vs_core_version}") { transitive = false }
 
     shadow("gg.essential:elementa:${rootProject.elementaVersion}") { transitive = false }
     shadow("gg.essential:universalcraft-1.20.1-forge:${rootProject.ucVersion}") { transitive = false }
