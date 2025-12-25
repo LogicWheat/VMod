@@ -503,57 +503,57 @@ object VMCommands {
                         )
                     )
                 )
-            ).then(
-                lt("gravity")
-                .then(
-                    lt("set-for").then(
-                        arg("ships", ShipArgument.ships()).then(
-                            arg("x", DoubleArgumentType.doubleArg()).then(
-                                arg("y", DoubleArgumentType.doubleArg()).then(
-                                    arg("z", DoubleArgumentType.doubleArg()).executes {
-                                        setGravityFor(it)
-                                    }
-                                )
-                            )
-                        )
-                    )
-                ).then(
-                    lt("set-for-connected").then(
-                        arg("ships", ShipArgument.ships()).then(
-                            arg("x", DoubleArgumentType.doubleArg()).then(
-                                arg("y", DoubleArgumentType.doubleArg()).then(
-                                    arg("z", DoubleArgumentType.doubleArg()).executes {
-                                        setGravityForConnected(it)
-                                    }
-                                )
-                            )
-                        )
-                    )
-                ).then(
-                    lt("set-for-connected-and-touching").then(
-                        arg("ships", ShipArgument.ships()).then(
-                            arg("x", DoubleArgumentType.doubleArg()).then(
-                                arg("y", DoubleArgumentType.doubleArg()).then(
-                                    arg("z", DoubleArgumentType.doubleArg()).executes {
-                                        setGravityForConnectedAndTouching(it)
-                                    }
-                                )
-                            )
-                        )
-                    )
-                ).then(
-                    lt("reset-for").then(
-                        arg("ships", ShipArgument.ships()).executes {
-                            resetGravityFor(it)
-                        }
-                    )
-                ).then(
-                    lt("reset-for-every-ship-in").then(
-                        arg("dimension", DimensionArgument.dimension()).executes {
-                            resetGravityForEveryShipIn(it)
-                        }
-                    )
-                )
+//            ).then(
+//                lt("gravity")
+//                .then(
+//                    lt("set-for").then(
+//                        arg("ships", ShipArgument.ships()).then(
+//                            arg("x", DoubleArgumentType.doubleArg()).then(
+//                                arg("y", DoubleArgumentType.doubleArg()).then(
+//                                    arg("z", DoubleArgumentType.doubleArg()).executes {
+//                                        setGravityFor(it)
+//                                    }
+//                                )
+//                            )
+//                        )
+//                    )
+//                ).then(
+//                    lt("set-for-connected").then(
+//                        arg("ships", ShipArgument.ships()).then(
+//                            arg("x", DoubleArgumentType.doubleArg()).then(
+//                                arg("y", DoubleArgumentType.doubleArg()).then(
+//                                    arg("z", DoubleArgumentType.doubleArg()).executes {
+//                                        setGravityForConnected(it)
+//                                    }
+//                                )
+//                            )
+//                        )
+//                    )
+//                ).then(
+//                    lt("set-for-connected-and-touching").then(
+//                        arg("ships", ShipArgument.ships()).then(
+//                            arg("x", DoubleArgumentType.doubleArg()).then(
+//                                arg("y", DoubleArgumentType.doubleArg()).then(
+//                                    arg("z", DoubleArgumentType.doubleArg()).executes {
+//                                        setGravityForConnectedAndTouching(it)
+//                                    }
+//                                )
+//                            )
+//                        )
+//                    )
+//                ).then(
+//                    lt("reset-for").then(
+//                        arg("ships", ShipArgument.ships()).executes {
+//                            resetGravityFor(it)
+//                        }
+//                    )
+//                ).then(
+//                    lt("reset-for-every-ship-in").then(
+//                        arg("dimension", DimensionArgument.dimension()).executes {
+//                            resetGravityForEveryShipIn(it)
+//                        }
+//                    )
+//                )
             ).then(
                 lt("op")
                 .requires { it.hasPermission(VMConfig.SERVER.PERMISSIONS.VMOD_OP_COMMANDS_PERMISSION_LEVEL) }
@@ -564,21 +564,21 @@ object VMCommands {
                             0
                         }
                     )
-                ).then(
-                    lt("set-dimension-gravity").then(
-                        arg("dimension", DimensionArgument.dimension()).then(
-                            arg("x", DoubleArgumentType.doubleArg()).then(
-                                arg("y", DoubleArgumentType.doubleArg()).then(
-                                    arg("z", DoubleArgumentType.doubleArg()).executes {
-                                        0
-//                                        OP.changeDimensionGravity(it)
-                                    }
-                                )
-                            )
-                        )
-                    )
+//                ).then(
+//                    lt("set-dimension-gravity").then(
+//                        arg("dimension", DimensionArgument.dimension()).then(
+//                            arg("x", DoubleArgumentType.doubleArg()).then(
+//                                arg("y", DoubleArgumentType.doubleArg()).then(
+//                                    arg("z", DoubleArgumentType.doubleArg()).executes {
+//                                        0
+////                                        OP.changeDimensionGravity(it)
+//                                    }
+//                                )
+//                            )
+//                        )
+//                    )
                 ).then(lt("clear-vmod-attachments").executes { OP.clearVmodAttachments(it) }
-                ).then(lt("delete-phys-entities").executes { OP.deletePhysEntities(it) }
+//                ).then(lt("delete-phys-entities").executes { OP.deletePhysEntities(it) }
                 ).then(lt("prune-shipyard-chunks").executes { OP.pruneShipyardChunks(it) }
                 )
             ).also {
