@@ -2,6 +2,7 @@
   "id": "toolgun/snap_mode",
   "icon": "minecraft:book",
   "category": "the_vmod:toolgun",
+  "sortnum": 2,
   "name": "Snap Mode",
   "pages": [
     {

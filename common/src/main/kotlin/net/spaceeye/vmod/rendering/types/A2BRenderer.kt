@@ -76,6 +76,7 @@ open class A2BRenderer(): BaseRenderer(), ReflectableObject {
     }
 
     override fun renderData(poseStack: PoseStack, camera: Camera, timestamp: Long) = with(data) {
+        if (color.alpha == 0) return
         val level = Minecraft.getInstance().level!!
 
         val ship1 = if (shipId1 != -1L) { level.shipObjectWorld.loadedShips.getById(shipId1) ?: return } else null

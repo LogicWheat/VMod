@@ -1,3 +1,6 @@
+# 1.9.1
+* Fixed some issues
+
 # 1.9.0
 * Works on 2.4 VS
 * Phys Rope, Slider, Sync Rotation are disabled

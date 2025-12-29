@@ -66,6 +66,7 @@ class TimedA2BRenderer(): BaseRenderer(), TimedRenderer, PositionDependentRender
     } }
 
     override fun renderData(poseStack: PoseStack, camera: Camera, timestamp: Long) = with(data) {
+        if (color.alpha == 0) return
         val tesselator = Tesselator.getInstance()
         val vBuffer = tesselator.builder
 

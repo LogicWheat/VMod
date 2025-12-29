@@ -44,7 +44,7 @@ object VSShipyardPruner {
     }
 
     private fun clearId(server: MinecraftServer, ship: ServerShip) {
-        val level = server.getLevelFromDimensionId(ship.chunkClaimDimension) ?: return
+        val level = server?.getLevelFromDimensionId(ship.chunkClaimDimension ?: return) ?: return
         val path = (((level.chunkSource.chunkMap as? ChunkStorageAccessor)?.`vmod$getWorker`() as? IOWorkerAccessor)?.`vmod$getStorage`() as? RegionFileStorageAccessor)?.`vmod$getPath`() ?: return
 
         if (path.notExists()) return

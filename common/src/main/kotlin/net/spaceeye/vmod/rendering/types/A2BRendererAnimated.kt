@@ -78,6 +78,7 @@ open class A2BRendererAnimated(): BaseRenderer(), ReflectableObject {
     }
 
     override fun renderData(poseStack: PoseStack, camera: Camera, timestamp: Long) = with(data) {
+        if (color.alpha == 0) return
         val level = Minecraft.getInstance().level!!
 
         val (_, gif) = gifRef ?: let { gifRef = GIFManager.getAnimatedTextureFromLocation(texture); gifRef!! }

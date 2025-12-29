@@ -78,6 +78,7 @@ class PhysRopeRenderer(): BaseRenderer(), ReflectableObject {
     }
 
     override fun renderData(poseStack: PoseStack, camera: Camera, timestamp: Long) = with(data) {
+        if (color.alpha == 0) return
         val level = Minecraft.getInstance().level!!
         val sides = sides
         val fullbright = fullbright

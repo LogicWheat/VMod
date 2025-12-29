@@ -1,3 +1,4 @@
+{.e_sortnum 2}
 # Snap Mode
 
 In certain modes (Connection/Hydraulics) there exists a "Snap Mode", usually as a secondary toolgun mode. This mode allows you to snap one ship to another. It also respects "HitPos Modes".

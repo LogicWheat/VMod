@@ -1,6 +1,5 @@
 package net.spaceeye.vmod.toolgun
 
-import com.mojang.blaze3d.platform.InputConstants
 import dev.architectury.event.EventResult
 import dev.architectury.event.events.client.ClientPlayerEvent
 import dev.architectury.event.events.client.ClientRawInputEvent
@@ -9,10 +8,7 @@ import dev.architectury.utils.EnvExecutor
 import gg.essential.elementa.components.UIBlock
 import net.minecraft.client.KeyMapping
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.network.chat.Component
-import net.spaceeye.vmod.ELOG
-import net.spaceeye.vmod.PlatformUtils
 import net.spaceeye.vmod.VMItems
 import net.spaceeye.vmod.events.PersistentEvents
 import net.spaceeye.vmod.gui.addScreenAddition
@@ -186,7 +182,9 @@ open class ClientToolGunState(
 
     var guiIsOpened: () -> Boolean = {Minecraft.getInstance().screen != null}
     var toolgunGuiIsOpened: () -> Boolean = {Minecraft.getInstance().screen.let { it is MainToolgunGUIWindow || it is VEntityChangerGui }}
-    var playerIsUsingToolgun: () -> Boolean = {Minecraft.getInstance().player?.mainHandItem?.item == VMItems.TOOLGUN.get()}
+    var playerIsUsingToolgun: () -> Boolean = {
+        try { Minecraft.getInstance().player?.mainHandItem?.item == VMItems.TOOLGUN.get() } catch (_: Throwable) {false}
+    }
 
     override fun close() {
         currentMode = null

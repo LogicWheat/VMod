@@ -104,6 +104,7 @@ class BlockStateRenderer(): BlockRenderer(), ReflectableObject, PositionDependen
     }
 
     override fun renderBlockData(poseStack: PoseStack, camera: Camera, buffer: MultiBufferSource, timestamp: Long) = with(data) {
+        if (color.alpha == 0) return
         val level = Minecraft.getInstance().level!!
         val scale = scale
         val state = state ?: return@with
