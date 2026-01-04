@@ -51,7 +51,7 @@ dependencies {
     //SODIUM
     modCompileOnly("maven.modrinth:sodium:${project.sodium_version}")
 
-    modCompileOnlyApi(files("vs_jars/clockwork-forge-0.5.0-[MELTING_POINT]-HOTFIX-1.jar"))
+    modCompileOnlyApi(files("vs_jars/clockwork-1.20.1-0.5.3-fabric-46751d6362.jar"))
     modCompileOnlyApi(files("vs_jars/trackwork-1.20.1-1.1.1b.jar"))
 
     modCompileOnly("com.simibubi.create:create-fabric-${minecraft_version}:${create_fabric_version}")

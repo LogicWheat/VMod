@@ -179,8 +179,8 @@ class HydraulicsConstraint(): TwoShipsMConstraint(), VEAutoSerializable, Tickabl
             d1 = (d1 as VSDistanceJoint).copy(minDistance = 0f, maxDistance = distance)
             level.updateJoint(cIDs[0], d1!!)
         } else {
-            d1 = d1!!.copy(null, p11, null, null, p21, null)
-            d2 = d2!!.copy(null, p12, null, null, p22, null)
+            d1 = d1!!.copy(pos0 = p11, pos1 = p21)
+            d2 = d2!!.copy(pos0 = p12, pos1 = p22)
             level.updateJoint(cIDs[0], d1!!)
             level.updateJoint(cIDs[1], d2!!)
         }

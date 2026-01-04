@@ -7,10 +7,9 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import net.spaceeye.vmod.utils.JVector3d
 import org.valkyrienskies.clockwork.ClockworkBlocks
-import org.valkyrienskies.clockwork.content.contraptions.phys.bearing.PhysBearingBlockEntity
 import org.valkyrienskies.clockwork.util.ClockworkConstants
+import org.valkyrienskies.clockwork.util.ClockworkUtils.getVector3d
 import org.valkyrienskies.core.api.ships.ServerShip
-import org.valkyrienskies.mod.util.getVector3d
 import org.valkyrienskies.mod.util.putVector3d
 
 class ClockworkSchemCompat(): SchemCompatItem {
@@ -23,11 +22,8 @@ class ClockworkSchemCompat(): SchemCompatItem {
             val (oldCenter, newCenter) = centerPositions[oldId]!!
             val oldShiptraptionCenter = tag.getVector3d(ClockworkConstants.Nbt.OLD_SHIPTRAPTION_CENTER)!!
             tag.putVector3d(ClockworkConstants.Nbt.NEW_SHIPTRAPTION_CENTER, oldShiptraptionCenter.sub(oldCenter).add(newCenter))
-            tag
-        }
 
-        afterPasteCallbackSetter {
-            (it as PhysBearingBlockEntity?)?.tryRefresh()
+            tag
         }
     }
 }
