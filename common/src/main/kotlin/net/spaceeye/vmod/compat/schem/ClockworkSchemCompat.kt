@@ -22,7 +22,6 @@ class ClockworkSchemCompat(): SchemCompatItem {
             val (oldCenter, newCenter) = centerPositions[oldId]!!
             val oldShiptraptionCenter = tag.getVector3d(ClockworkConstants.Nbt.OLD_SHIPTRAPTION_CENTER)!!
             tag.putVector3d(ClockworkConstants.Nbt.NEW_SHIPTRAPTION_CENTER, oldShiptraptionCenter.sub(oldCenter).add(newCenter))
-
             tag
         }
     }
